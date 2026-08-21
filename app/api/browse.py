@@ -13,16 +13,67 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.domain.models import (
+    Claim,
+    ClaimEvidence,
     CurriculumEdge,
     CurriculumNode,
     ExamQuestion,
+    NodeType,
     QuestionNodeMapping,
+    ScheduledUnit,
     SourceDocument,
     SourceSpan,
     TeachingUnit,
 )
 
 router = APIRouter(tags=["browse"])
+
+
+class StatsOut(BaseModel):
+    documents: int
+    spans: int
+    objectives: int
+    questions: int
+    mappings: int
+    units: int
+    scheduled: int
+    claims: int
+
+
+@router.get("/stats", response_model=StatsOut)
+async def stats(session: AsyncSession = Depends(get_session)) -> StatsOut:
+    """The eight quantities that flow through the pipeline, in one request.
+
+    The workspace shows these as a single row so a stalled stage reads as a
+    zero next to a populated neighbour. Assembling them client-side meant a
+    request per question just to total the mappings; this is one round trip
+    that stays flat as the corpus grows.
+    """
+
+    async def count(model, *where):
+        return await session.scalar(select(func.count()).select_from(model).where(*where)) or 0
+
+    # Max rather than sum: scheduled_units holds every plan version, and
+    # the figure that means something is the size of one plan, not the
+    # total across every replan ever solved.
+    per_plan = (
+        select(func.count().label("n"))
+        .select_from(ScheduledUnit)
+        .group_by(ScheduledUnit.plan_version)
+        .subquery()
+    )
+    scheduled = await session.scalar(select(func.max(per_plan.c.n)))
+
+    return StatsOut(
+        documents=await count(SourceDocument),
+        spans=await count(SourceSpan),
+        objectives=await count(CurriculumNode, CurriculumNode.node_type == NodeType.OBJECTIVE),
+        questions=await count(ExamQuestion),
+        mappings=await count(QuestionNodeMapping),
+        units=await count(TeachingUnit),
+        scheduled=scheduled or 0,
+        claims=await count(Claim),
+    )
 
 
 class DocumentOut(BaseModel):
@@ -123,6 +174,64 @@ async def list_question_mappings(
             weight=m.weight, confidence=m.confidence, mapping_method=m.mapping_method.value,
         )
         for m, n in rows
+    ]
+
+
+class CitationOut(BaseModel):
+    document_title: str
+    page: int
+    excerpt: str
+
+
+class ClaimOut(BaseModel):
+    id: UUID
+    text: str
+    verification_status: str
+    confidence: float
+    generation_model: str
+    verification_model: str
+    citations: list[CitationOut]
+
+
+@router.get("/claims", response_model=list[ClaimOut])
+async def list_claims(session: AsyncSession = Depends(get_session)) -> list[ClaimOut]:
+    """Generated claims with their evidence resolved to document + page.
+
+    Generation is the slowest, most rate-limited step in the pipeline, so
+    its output has to survive a page reload — re-running it just to look at
+    what it already produced is exactly what a metered demo can't afford.
+    Resolving the citations here is also the honest way to show the
+    provenance chain: these page numbers come from a join, not from the
+    model's own say-so.
+    """
+    claims = (
+        (await session.execute(select(Claim).order_by(Claim.created_at.desc()))).scalars().all()
+    )
+    if not claims:
+        return []
+
+    rows = (
+        await session.execute(
+            select(ClaimEvidence.claim_id, SourceDocument.title, SourceSpan.page, SourceSpan.text)
+            .join(SourceSpan, SourceSpan.id == ClaimEvidence.source_span_id)
+            .join(SourceDocument, SourceDocument.id == SourceSpan.document_id)
+            .where(ClaimEvidence.claim_id.in_([c.id for c in claims]))
+        )
+    ).all()
+
+    by_claim: dict[UUID, list[CitationOut]] = {}
+    for claim_id, title, page, text in rows:
+        by_claim.setdefault(claim_id, []).append(
+            CitationOut(document_title=title, page=page, excerpt=" ".join(text.split())[:200])
+        )
+
+    return [
+        ClaimOut(
+            id=c.id, text=c.text, verification_status=c.verification_status.value,
+            confidence=c.confidence, generation_model=c.generation_model,
+            verification_model=c.verification_model, citations=by_claim.get(c.id, []),
+        )
+        for c in claims
     ]
 
 

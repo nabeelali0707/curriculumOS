@@ -4,498 +4,768 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CurriculumOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap">
 <style>
-  :root {
-    --bg: #ffffff;
-    --panel: #f7fafd;
-    --panel-2: #eef4fb;
-    --border: #e3eaf3;
-    --accent: #2f6fed;
-    --accent-soft: #e9f0ff;
-    --text: #14213d;
-    --muted: #667085;
-    --ok: #12805c;
-    --ok-soft: #e6f6f0;
-    --warn: #a86a00;
-    --warn-soft: #fdf3e2;
-    --err: #c02626;
-    --err-soft: #fdecec;
-  }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  a { color: var(--accent); }
+/* ---------------------------------------------------------------
+   Marking ink on ledger paper.
+   Neutrals carry a slight green bias so they read as chosen rather
+   than as default mid-grey. The accent is flat indigo — fountain-pen
+   ink — and is deliberately NOT in the semantic ramp, because
+   verification status is content here, not decoration, and the two
+   must never be confusable.
+   --------------------------------------------------------------- */
+:root {
+  --paper:      #f7f8f5;
+  --surface:    #ffffff;
+  --sunken:     #f1f3ed;
+  --rule:       #e2e4dc;
+  --rule-firm:  #cbcfc2;
+  --ink:        #191c18;
+  --ink-soft:   #5b6058;
+  --ink-faint:  #868c81;
+  --accent:     #3a3d8f;
+  --accent-bg:  #ecedfa;
+  /* Text that sits ON the accent. A token, not a per-theme override:
+     the accent inverts between themes (dark indigo on paper, pale indigo
+     on dark), so its foreground has to invert with it. */
+  --on-accent:  #ffffff;
 
-  header {
-    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; background: var(--bg); z-index: 10;
-  }
-  header h1 { margin: 0; font-size: 1.15rem; letter-spacing: -0.01em; }
-  header .sub { color: var(--muted); font-size: .82rem; margin-top: .1rem; }
-  .status-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  --ok:    #1f6b4a;  --ok-bg:   #e6f2ec;
+  --warn:  #8a6320;  --warn-bg: #f7efdf;
+  --crit:  #9e3128;  --crit-bg: #f8e8e6;
+  --idle:  #7a7f76;  --idle-bg: #eef0ea;
 
-  .layout { display: grid; grid-template-columns: 250px 1fr; min-height: calc(100vh - 66px); }
-  nav {
-    border-right: 1px solid var(--border); padding: 1rem .75rem;
-    background: var(--panel); position: sticky; top: 66px; height: calc(100vh - 66px);
-    overflow-y: auto;
-  }
-  nav button {
-    display: block; width: 100%; text-align: left; margin: 0 0 .2rem;
-    background: none; border: none; border-radius: 7px;
-    padding: .5rem .6rem; font: inherit; font-size: .87rem; color: var(--text);
-    cursor: pointer; display: flex; align-items: center; gap: .55rem;
-  }
-  nav button:hover { background: var(--panel-2); }
-  nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-  nav .num {
-    flex: 0 0 1.35rem; height: 1.35rem; border-radius: 999px;
-    background: #fff; border: 1px solid var(--border);
-    display: grid; place-items: center; font-size: .72rem; color: var(--muted);
-  }
-  nav button.active .num { border-color: var(--accent); color: var(--accent); }
-  nav button.done .num { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
-  nav .group-label {
-    font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
-    color: var(--muted); margin: 1rem .6rem .4rem;
-  }
+  --display: "Spectral", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  main { padding: 1.5rem 1.75rem 4rem; max-width: 980px; }
-  .step { display: none; }
-  .step.active { display: block; }
-  .step > h2 { margin: 0 0 .25rem; font-size: 1.3rem; letter-spacing: -0.01em; }
-  .step > .lede { color: var(--muted); margin: 0 0 1.25rem; font-size: .92rem; max-width: 68ch; }
+  --rail: 250px;
+  --measure: 64ch;
+}
 
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 1.1rem; margin-bottom: 1rem;
-  }
-  .card h3 { margin: 0 0 .2rem; font-size: .97rem; }
-  .card .hint { color: var(--muted); font-size: .84rem; margin: 0 0 .8rem; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:     #131511;
+    --surface:   #1b1e19;
+    --sunken:    #191c17;
+    --rule:      #2b2f29;
+    --rule-firm: #3d423a;
+    --ink:       #eceee7;
+    --ink-soft:  #99a093;
+    --ink-faint: #767d70;
+    --accent:    #a0a4f2;
+    --accent-bg: #24264a;
+    --on-accent: #12140f;
 
-  label { display: block; font-size: .8rem; color: var(--muted); margin: .6rem 0 .2rem; }
-  input, select, textarea {
-    width: 100%; border: 1px solid var(--border); border-radius: 7px;
-    padding: .5rem .6rem; font: inherit; font-size: .88rem; background: #fff; color: var(--text);
+    --ok:   #6cc09a;  --ok-bg:   #16301f;
+    --warn: #d7a955;  --warn-bg: #33270f;
+    --crit: #e08379;  --crit-bg: #361a17;
+    --idle: #8b9186;  --idle-bg: #22251f;
   }
-  textarea { resize: vertical; }
-  .row { display: flex; gap: .75rem; flex-wrap: wrap; }
-  .row > * { flex: 1 1 160px; }
+}
+:root[data-theme="dark"] {
+  --paper:     #131511;
+  --surface:   #1b1e19;
+  --sunken:    #191c17;
+  --rule:      #2b2f29;
+  --rule-firm: #3d423a;
+  --ink:       #eceee7;
+  --ink-soft:  #99a093;
+  --ink-faint: #767d70;
+  --accent:    #a0a4f2;
+  --accent-bg: #24264a;
+  --on-accent: #12140f;
 
-  button.act {
-    margin-top: .85rem; background: var(--accent); color: #fff; border: none;
-    border-radius: 7px; padding: .5rem 1rem; font: inherit; font-size: .87rem;
-    font-weight: 500; cursor: pointer;
-  }
-  button.act:hover { filter: brightness(1.06); }
-  button.act:disabled { opacity: .55; cursor: default; filter: none; }
-  button.act.ghost { background: #fff; color: var(--accent); border: 1px solid var(--border); }
-  button.act.sm { padding: .3rem .6rem; font-size: .78rem; margin-top: 0; }
+  --ok:   #6cc09a;  --ok-bg:   #16301f;
+  --warn: #d7a955;  --warn-bg: #33270f;
+  --crit: #e08379;  --crit-bg: #361a17;
+  --idle: #8b9186;  --idle-bg: #22251f;
+}
 
-  .badge {
-    display: inline-flex; align-items: center; gap: .35rem;
-    padding: .2rem .55rem; border-radius: 999px; background: #fff;
-    border: 1px solid var(--border); font-size: .75rem; white-space: nowrap;
-  }
-  .badge.ok { background: var(--ok-soft); border-color: #bfe5d7; color: var(--ok); }
-  .badge.warn { background: var(--warn-soft); border-color: #f0dcb4; color: var(--warn); }
-  .badge.err { background: var(--err-soft); border-color: #f3cccc; color: var(--err); }
-  .badge.info { background: var(--accent-soft); border-color: #cfe0ff; color: var(--accent); }
-  .dot { width: .5rem; height: .5rem; border-radius: 999px; background: var(--muted); }
-  .dot.ok { background: var(--ok); } .dot.err { background: var(--err); }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-  table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: .6rem; }
-  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
-  tbody tr:hover { background: #fff; }
-  .table-wrap { overflow-x: auto; }
-  code {
-    background: var(--accent-soft); color: var(--text);
-    padding: .08rem .32rem; border-radius: 4px; font-size: .82em;
-  }
-  pre {
-    background: #fff; border: 1px solid var(--border); border-radius: 8px;
-    padding: .7rem; white-space: pre-wrap; word-break: break-word;
-    font-size: .8rem; margin: .7rem 0 0; max-height: 340px; overflow: auto;
-  }
-  .out { margin-top: .8rem; }
-  .empty { color: var(--muted); font-size: .85rem; font-style: italic; padding: .5rem 0; }
-  .spin { display: inline-block; width: .8rem; height: .8rem; border: 2px solid var(--accent-soft);
-    border-top-color: var(--accent); border-radius: 50%; animation: s .7s linear infinite; }
-  @keyframes s { to { transform: rotate(360deg); } }
-  .kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .6rem; }
-  .kpi { flex: 1 1 120px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: .7rem .85rem; }
-  .kpi .v { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
-  .kpi .l { font-size: .75rem; color: var(--muted); }
-  .kpi.ok .v { color: var(--ok); } .kpi.warn .v { color: var(--warn); }
-  .bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; min-width: 60px; }
-  .bar > i { display: block; height: 100%; background: var(--accent); }
+/* ---------- masthead ---------- */
+.masthead {
+  border-bottom: 1px solid var(--rule-firm);
+  background: var(--surface);
+  position: sticky; top: 0; z-index: 20;
+}
+.masthead-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1.5rem; padding: .85rem 1.75rem .7rem;
+}
+.wordmark {
+  font-family: var(--display); font-size: 1.3rem; font-weight: 600;
+  letter-spacing: -.015em; margin: 0;
+}
+.wordmark span { color: var(--accent); }
+.tagline {
+  font-family: var(--display); font-style: italic;
+  color: var(--ink-soft); font-size: .92rem; margin: 0;
+}
+.masthead-tools { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
+
+/* ---------- pipeline ledger: the whole system's state, at a glance ---------- */
+.ledger {
+  display: grid; grid-template-columns: repeat(8, 1fr);
+  border-top: 1px solid var(--rule);
+  background: var(--sunken);
+}
+.ledger-cell {
+  padding: .5rem 1rem .55rem; border-right: 1px solid var(--rule);
+  display: flex; flex-direction: column; gap: .05rem; min-width: 0;
+}
+.ledger-cell:last-child { border-right: none; }
+.ledger-figure {
+  font-family: var(--data); font-size: 1.1rem; font-weight: 500;
+  font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.ledger-figure.zero { color: var(--ink-faint); }
+.ledger-label {
+  font-size: .63rem; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 900px) { .ledger { grid-template-columns: repeat(4, 1fr); } }
+
+/* ---------- shell ---------- */
+.shell { display: grid; grid-template-columns: var(--rail) 1fr; align-items: start; }
+@media (max-width: 820px) { .shell { grid-template-columns: 1fr; } .spine { position: static; height: auto; } }
+
+/* ---------- numbered spine: the pipeline genuinely is ordered ---------- */
+.spine {
+  position: sticky; top: 118px; align-self: start;
+  height: calc(100vh - 118px); overflow-y: auto;
+  border-right: 1px solid var(--rule); padding: 1.25rem 0 2rem;
+  background: var(--paper);
+}
+.spine-group {
+  font-size: .63rem; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--ink-faint); padding: 0 1.25rem; margin: 1.4rem 0 .5rem;
+}
+.spine-group:first-child { margin-top: 0; }
+.spine button {
+  display: flex; align-items: center; gap: .7rem; width: 100%;
+  background: none; border: none; border-left: 2px solid transparent;
+  font: inherit; font-size: .875rem; color: var(--ink-soft);
+  padding: .42rem 1.25rem; cursor: pointer; text-align: left;
+}
+.spine button:hover { color: var(--ink); background: var(--sunken); }
+.spine button.active {
+  color: var(--ink); border-left-color: var(--accent);
+  background: var(--sunken); font-weight: 500;
+}
+.step-num {
+  font-family: var(--data); font-size: .72rem; font-variant-numeric: tabular-nums;
+  color: var(--ink-faint); flex: none; width: 1.1rem;
+}
+.spine button.active .step-num { color: var(--accent); }
+
+/* ---------- stage ---------- */
+main { padding: 2rem 2.25rem 6rem; max-width: 1040px; min-width: 0; }
+.stage { display: none; }
+.stage.active { display: block; animation: rise .28s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.stage-eyebrow {
+  font-family: var(--data); font-size: .7rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: .5rem;
+}
+.stage h2 {
+  font-family: var(--display); font-weight: 600; font-size: 1.85rem;
+  letter-spacing: -.02em; margin: 0 0 .55rem; text-wrap: balance;
+}
+/* The editorial voice: why this stage exists. Serif, measured, italic
+   pull-quote feel — distinct from the operational voice below it. */
+.thesis {
+  font-family: var(--display); font-size: 1.02rem; line-height: 1.6;
+  color: var(--ink-soft); max-width: var(--measure); margin: 0 0 1.9rem;
+  padding-left: .95rem; border-left: 2px solid var(--rule-firm);
+}
+.thesis em { color: var(--ink); font-style: italic; }
+
+/* ---------- panels: flat ruled surfaces, not floating cards ---------- */
+.panel {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 3px; margin-bottom: 1.1rem;
+}
+.panel-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  padding: .8rem 1.1rem; border-bottom: 1px solid var(--rule);
+}
+.panel-head h3 {
+  margin: 0; font-size: .82rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.panel-note {
+  font-size: .82rem; color: var(--ink-soft); margin: 0;
+  max-width: var(--measure); flex: 1 1 22ch;
+}
+.panel-body { padding: 1.1rem; }
+
+/* ---------- controls ---------- */
+.field-row { display: flex; gap: .9rem; flex-wrap: wrap; }
+.field { flex: 1 1 170px; min-width: 0; display: flex; flex-direction: column; gap: .28rem; }
+.field.wide { flex-basis: 100%; }
+label {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--ink-faint); font-weight: 500;
+}
+input, select {
+  width: 100%; font: inherit; font-size: .875rem;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--rule-firm); border-radius: 2px; padding: .44rem .55rem;
+}
+input[type="file"] { padding: .34rem .45rem; font-size: .82rem; }
+input:focus, select:focus { border-color: var(--accent); }
+.actions { display: flex; gap: .55rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; }
+
+button.go {
+  font: inherit; font-size: .85rem; font-weight: 500;
+  background: var(--accent); color: var(--on-accent);
+  border: 1px solid var(--accent); border-radius: 2px;
+  padding: .45rem 1rem; cursor: pointer;
+}
+button.go:hover { filter: brightness(1.08); }
+button.go:disabled { opacity: .5; cursor: default; filter: none; }
+button.quiet {
+  font: inherit; font-size: .78rem; background: none; color: var(--ink-soft);
+  border: 1px solid var(--rule-firm); border-radius: 2px;
+  padding: .28rem .6rem; cursor: pointer;
+}
+button.quiet:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+/* ---------- status vocabulary: state readable as form, not just number ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font-family: var(--data); font-size: .7rem; letter-spacing: .01em;
+  padding: .13rem .45rem; border-radius: 2px;
+  border-left: 2px solid var(--idle); background: var(--idle-bg); color: var(--idle);
+  white-space: nowrap;
+}
+.chip.ok   { border-left-color: var(--ok);   background: var(--ok-bg);   color: var(--ok); }
+.chip.warn { border-left-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+.chip.crit { border-left-color: var(--crit); background: var(--crit-bg); color: var(--crit); }
+.chip.info { border-left-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--idle); flex: none; }
+.dot.ok { background: var(--ok); } .dot.crit { background: var(--crit); }
+
+/* Confidence is a continuum, so it gets a meter as well as a figure. */
+.meter { display: flex; align-items: center; gap: .45rem; }
+.meter-track { width: 46px; height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; flex: none; }
+.meter-fill { display: block; height: 100%; background: var(--accent); }
+.meter-fill.ok { background: var(--ok); } .meter-fill.warn { background: var(--warn); } .meter-fill.crit { background: var(--crit); }
+.num { font-family: var(--data); font-variant-numeric: tabular-nums; font-size: .78rem; }
+
+/* ---------- tables ---------- */
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+thead th {
+  text-align: left; font-size: .64rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint);
+  padding: .4rem .55rem; border-bottom: 1px solid var(--rule-firm); white-space: nowrap;
+}
+tbody td { padding: .46rem .55rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: var(--sunken); }
+td.mono, .mono { font-family: var(--data); font-size: .78rem; font-variant-numeric: tabular-nums; }
+td.num-col { text-align: right; font-family: var(--data); font-variant-numeric: tabular-nums; }
+
+/* ---------- readouts ---------- */
+.readout { margin-top: 1rem; }
+.readout:empty { display: none; }
+.figures { display: flex; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 2px; flex-wrap: wrap; }
+.figure { flex: 1 1 110px; background: var(--surface); padding: .65rem .8rem; }
+.figure-v { font-family: var(--data); font-size: 1.5rem; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.15; letter-spacing: -.02em; }
+.figure-l { font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint); }
+.figure.ok .figure-v { color: var(--ok); }
+.figure.warn .figure-v { color: var(--warn); }
+.figure.crit .figure-v { color: var(--crit); }
+
+.aside {
+  font-family: var(--display); font-style: italic; font-size: .93rem;
+  color: var(--ink-soft); margin: .85rem 0 0; max-width: var(--measure);
+}
+.empty { color: var(--ink-faint); font-size: .84rem; font-style: italic; padding: .35rem 0; }
+pre {
+  font-family: var(--data); font-size: .76rem; background: var(--sunken);
+  border: 1px solid var(--rule); border-radius: 2px; padding: .6rem .7rem;
+  white-space: pre-wrap; word-break: break-word; margin: .6rem 0 0;
+  max-height: 260px; overflow: auto;
+}
+.spin {
+  display: inline-block; width: .7rem; height: .7rem; border: 2px solid var(--rule-firm);
+  border-top-color: var(--accent); border-radius: 50%; animation: turn .7s linear infinite;
+}
+@keyframes turn { to { transform: rotate(360deg); } }
+.working { display: inline-flex; align-items: center; gap: .45rem; font-size: .82rem; color: var(--ink-soft); }
+
+/* claim + citation */
+.claim { border-bottom: 1px solid var(--rule); padding: .8rem 0; }
+.claim:last-child { border-bottom: none; }
+.claim:first-child { padding-top: 0; }
+.claim-head { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-bottom: .35rem; }
+.claim-text { margin: 0 0 .45rem; max-width: var(--measure); }
+.cite {
+  font-family: var(--data); font-size: .72rem; color: var(--ink-soft);
+  padding-left: .6rem; border-left: 1px solid var(--rule-firm); margin-top: .3rem;
+}
+.cite b { color: var(--ink); font-weight: 500; }
+a { color: var(--accent); }
+.masthead a.quiet { text-decoration: none; }
 </style>
 </head>
 <body>
 
-<header>
-  <div>
-    <h1>CurriculumOS</h1>
-    <div class="sub">Grounded, citable term planning &mdash; teacher workspace</div>
+<header class="masthead">
+  <div class="masthead-top">
+    <div>
+      <h1 class="wordmark">Curriculum<span>OS</span></h1>
+      <p class="tagline">Every lesson traceable to a page.</p>
+    </div>
+    <div class="masthead-tools">
+      <span class="chip" id="chip-api"><span class="dot" id="dot-api"></span> api</span>
+      <span class="chip" id="chip-db"><span class="dot" id="dot-db"></span> database</span>
+      <a class="quiet" href="/docs" target="_blank" style="font-size:.78rem">API&nbsp;reference</a>
+      <button class="quiet" id="theme-toggle" aria-label="Switch colour theme">Theme</button>
+    </div>
   </div>
-  <div class="status-row">
-    <span class="badge"><span class="dot" id="dot-api"></span> API</span>
-    <span class="badge"><span class="dot" id="dot-db"></span> Database</span>
-    <a class="badge" href="/docs" target="_blank">API docs</a>
-  </div>
+  <!-- The whole system's state in one row. Summary before detail. -->
+  <div class="ledger" id="ledger"></div>
 </header>
 
-<div class="layout">
-  <nav id="nav">
-    <div class="group-label">Sources</div>
-    <button data-step="upload"><span class="num">1</span> Upload documents</button>
-    <button data-step="curriculum"><span class="num">2</span> Extract curriculum</button>
-    <button data-step="questions"><span class="num">3</span> Parse questions</button>
-    <div class="group-label">Analysis</div>
-    <button data-step="mapping"><span class="num">4</span> Map to objectives</button>
-    <button data-step="corrections"><span class="num">5</span> Teacher corrections</button>
-    <button data-step="emphasis"><span class="num">6</span> Emphasis scoring</button>
-    <div class="group-label">Planning</div>
-    <button data-step="calendar"><span class="num">7</span> Calendar &amp; timetable</button>
-    <button data-step="plan"><span class="num">8</span> Build term plan</button>
-    <button data-step="replan"><span class="num">9</span> Disruption &amp; replan</button>
-    <div class="group-label">Output</div>
-    <button data-step="generation"><span class="num">10</span> Grounded generation</button>
+<div class="shell">
+  <nav class="spine" id="spine" aria-label="Pipeline stages">
+    <div class="spine-group">Sources</div>
+    <button data-stage="upload"><span class="step-num">01</span> Source documents</button>
+    <button data-stage="curriculum"><span class="step-num">02</span> Curriculum structure</button>
+    <button data-stage="questions"><span class="step-num">03</span> Questions &amp; marks</button>
+    <div class="spine-group">Analysis</div>
+    <button data-stage="mapping"><span class="step-num">04</span> Objective mapping</button>
+    <button data-stage="corrections"><span class="step-num">05</span> Teacher corrections</button>
+    <button data-stage="emphasis"><span class="step-num">06</span> Assessment emphasis</button>
+    <div class="spine-group">Planning</div>
+    <button data-stage="calendar"><span class="step-num">07</span> Calendar capacity</button>
+    <button data-stage="plan"><span class="step-num">08</span> Term plan</button>
+    <button data-stage="replan"><span class="step-num">09</span> Disruption &amp; replan</button>
+    <div class="spine-group">Output</div>
+    <button data-stage="generation"><span class="step-num">10</span> Grounded generation</button>
   </nav>
 
   <main>
-    <!-- 1 UPLOAD -->
-    <section class="step" id="step-upload">
-      <h2>1 &middot; Upload source documents</h2>
-      <p class="lede">Each file is parsed into structured blocks with page and bounding box, then stored as
-        <code>source_spans</code>. Everything downstream cites a span, never a raw file &mdash; that's what makes
-        &ldquo;verify this claim&rdquo; a database query instead of a re-reading exercise.</p>
+    <!-- 01 -->
+    <section class="stage" id="stage-upload">
+      <div class="stage-eyebrow">Stage 01 · Ingestion</div>
+      <h2>Source documents</h2>
+      <p class="thesis">Every file is cut into blocks that keep their page number, then stored as spans.
+        Nothing downstream ever cites a file &mdash; it cites a span. That is what turns
+        <em>&ldquo;check this claim&rdquo;</em> into a database query instead of a re-reading exercise.</p>
 
-      <div class="card">
-        <h3>Upload &amp; parse</h3>
-        <p class="hint">Parser chain, cheapest correct parser first: <code>pypdf_text</code> (real page numbers)
-          &rarr; <code>anydoc</code> (Rust, no ML model &mdash; office formats) &rarr; <code>vision_llm_ocr</code>
-          (scanned pages, via a multimodal LLM). No parser in this chain downloads a model.</p>
-        <div class="row">
-          <div><label>Title</label><input id="up-title" placeholder="Sindh Board Physics XI"></div>
-          <div><label>Document type</label>
-            <select id="up-type">
-              <option value="syllabus">syllabus</option>
-              <option value="textbook">textbook</option>
-              <option value="past_paper">past_paper</option>
-              <option value="mark_scheme">mark_scheme</option>
-              <option value="calendar">calendar</option>
-            </select>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Upload &amp; parse</h3>
+          <p class="panel-note">Cheapest correct parser first: <span class="mono">pypdf_text</span> (real page
+            numbers) &rarr; <span class="mono">anydoc</span> (Rust, office formats) &rarr;
+            <span class="mono">vision_llm_ocr</span> (scanned pages). None downloads a model.</p>
+        </div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field"><label for="up-title">Title</label><input id="up-title" placeholder="CS-201 Syllabus"></div>
+            <div class="field"><label for="up-type">Document type</label>
+              <select id="up-type">
+                <option value="syllabus">syllabus</option>
+                <option value="textbook">textbook</option>
+                <option value="past_paper">past paper</option>
+                <option value="mark_scheme">mark scheme</option>
+                <option value="calendar">calendar</option>
+              </select>
+            </div>
           </div>
-        </div>
-        <label>File</label><input type="file" id="up-file">
-        <button class="act" id="btn-upload">Upload &amp; parse</button>
-        <div class="out" id="out-upload"></div>
-      </div>
-
-      <div class="card">
-        <h3>Ingested documents</h3>
-        <p class="hint">Loaded from the database &mdash; already-parsed documents survive a page reload, so a demo
-          never has to re-run a parse.</p>
-        <button class="act ghost sm" onclick="loadDocuments()">Refresh</button>
-        <div class="out" id="out-docs"></div>
-      </div>
-    </section>
-
-    <!-- 2 CURRICULUM -->
-    <section class="step" id="step-curriculum">
-      <h2>2 &middot; Extract curriculum structure</h2>
-      <p class="lede">An LLM proposes topics, subtopics, objectives and prerequisite edges from the syllabus text.
-        Every node lands tagged <code>machine_extracted</code> with confidence below 1.0 &mdash; a machine-inferred
-        prerequisite must never look as authoritative as one stated in the official syllabus.</p>
-
-      <div class="card">
-        <h3>Extract from a document</h3>
-        <div class="row">
-          <div><label>Source document</label><select id="cur-doc"></select></div>
-        </div>
-        <button class="act" id="btn-extract">Extract curriculum</button>
-        <div class="out" id="out-extract"></div>
-      </div>
-
-      <div class="card">
-        <h3>Curriculum graph</h3>
-        <button class="act ghost sm" onclick="loadNodes()">Refresh</button>
-        <div class="out" id="out-nodes"></div>
-      </div>
-    </section>
-
-    <!-- 3 QUESTIONS -->
-    <section class="step" id="step-questions">
-      <h2>3 &middot; Parse questions &amp; mark schemes</h2>
-      <p class="lede">Exam questions and their mark-scheme entries are extracted as one linked entity, with marks and
-        span-level page attribution on both halves. The unmatched counts are the parser's honesty signal.</p>
-
-      <div class="card">
-        <h3>Parse a past paper</h3>
-        <div class="row">
-          <div><label>Past paper document</label><select id="q-doc"></select></div>
-          <div><label>Mark scheme (optional)</label><select id="q-ms"><option value="">&mdash; none &mdash;</option></select></div>
-        </div>
-        <div class="row">
-          <div><label>Year</label><input id="q-year" type="number" placeholder="2024"></div>
-          <div><label>Paper ref</label><input id="q-ref" placeholder="p2"></div>
-        </div>
-        <button class="act" id="btn-questions">Parse questions</button>
-        <div class="out" id="out-qparse"></div>
-      </div>
-
-      <div class="card">
-        <h3>Extracted questions</h3>
-        <button class="act ghost sm" onclick="loadQuestions()">Refresh</button>
-        <div class="out" id="out-questions"></div>
-      </div>
-    </section>
-
-    <!-- 4 MAPPING -->
-    <section class="step" id="step-mapping">
-      <h2>4 &middot; Map questions to objectives</h2>
-      <p class="lede">An ensemble &mdash; embedding similarity, lexical retrieval, syllabus terminology and LLM
-        classification &mdash; produces <em>multi-label weighted</em> mappings with confidence, not single-label
-        classification. One question can legitimately assess several objectives.</p>
-
-      <div class="card">
-        <h3>Run the ensemble mapper</h3>
-        <div class="row">
-          <div><label>Question</label><select id="map-q"></select></div>
-          <div><label>Min confidence</label><input id="map-conf" type="number" step="0.05" value="0.2"></div>
-        </div>
-        <button class="act" id="btn-map">Map question</button>
-        <div class="out" id="out-map"></div>
-      </div>
-
-      <div class="card">
-        <h3>Existing mappings</h3>
-        <p class="hint">Select a question above and refresh to see what's already stored.</p>
-        <button class="act ghost sm" onclick="loadMappings()">Refresh</button>
-        <div class="out" id="out-mappings"></div>
-      </div>
-    </section>
-
-    <!-- 5 CORRECTIONS -->
-    <section class="step" id="step-corrections">
-      <h2>5 &middot; Teacher corrections</h2>
-      <p class="lede">A correction is logged verbatim to <code>teacher_corrections</code> and, for a mapping, also
-        overwrites the live row: confidence pinned to 1.0, method set to <code>human_corrected</code>. This history
-        is the compounding asset &mdash; the one signal the ensemble always trusts.</p>
-
-      <div class="card">
-        <h3>Correct a mapping weight</h3>
-        <p class="hint">Pick a question in step 4 first, then refresh here to load its mappings.</p>
-        <button class="act ghost sm" onclick="loadCorrectable()">Load mappings</button>
-        <div class="out" id="out-correctable"></div>
-      </div>
-    </section>
-
-    <!-- 6 EMPHASIS -->
-    <section class="step" id="step-emphasis">
-      <h2>6 &middot; Historical assessment emphasis</h2>
-      <p class="lede">A weighted score per objective &mdash; frequency, recency decay, marks, syllabus weighting and
-        structural similarity &mdash; not raw frequency counting. This is what tells the solver which objectives
-        actually earn teaching time.</p>
-
-      <div class="card">
-        <h3>Compute emphasis scores</h3>
-        <div class="row"><div><label>Current year (optional)</label><input id="emph-year" type="number" placeholder="2025"></div></div>
-        <button class="act" id="btn-emphasis">Compute scores</button>
-        <div class="out" id="out-emphasis"></div>
-      </div>
-    </section>
-
-    <!-- 7 CALENDAR -->
-    <section class="step" id="step-calendar">
-      <h2>7 &middot; Calendar &amp; timetable</h2>
-      <p class="lede">The calendar is modelled as available instructional <em>capacity</em>, not a flat list of dates.
-        A school day is not a slot &mdash; the solver needs derived available minutes per subject, class and date.</p>
-
-      <div class="card">
-        <h3>Create an academic calendar</h3>
-        <div class="row">
-          <div><label>School id</label><input id="cal-school" value="pilot-school"></div>
-          <div><label>Term start</label><input id="cal-start" type="date"></div>
-          <div><label>Term end</label><input id="cal-end" type="date"></div>
-        </div>
-        <label>Non-teaching dates (comma separated, optional)</label>
-        <input id="cal-off" placeholder="2026-03-23, 2026-03-24">
-        <button class="act" id="btn-calendar">Create calendar</button>
-        <div class="out" id="out-calendar"></div>
-      </div>
-
-      <div class="card">
-        <h3>Add weekly timetable slots</h3>
-        <p class="hint">Each slot is expanded across every matching school day in the term.</p>
-        <div class="row">
-          <div><label>Calendar</label><select id="win-cal"></select></div>
-          <div><label>Subject</label><input id="win-subject" value="Physics"></div>
-          <div><label>Class</label><input id="win-class" value="XI-A"></div>
-        </div>
-        <div class="row">
-          <div><label>Weekday</label>
-            <select id="win-day">
-              <option value="0">Monday</option><option value="1">Tuesday</option>
-              <option value="2">Wednesday</option><option value="3">Thursday</option>
-              <option value="4">Friday</option>
-            </select>
+          <div class="field-row" style="margin-top:.7rem">
+            <div class="field wide"><label for="up-file">File</label><input type="file" id="up-file"></div>
           </div>
-          <div><label>Start</label><input id="win-start" type="time" value="09:00"></div>
-          <div><label>End</label><input id="win-end" type="time" value="10:00"></div>
+          <div class="actions"><button class="go" id="btn-upload">Upload &amp; parse</button></div>
+          <div class="readout" id="out-upload"></div>
         </div>
-        <button class="act" id="btn-windows">Add slots</button>
-        <div class="out" id="out-windows"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Ingested</h3>
+          <button class="quiet" data-refresh="loadDocuments">Reload</button>
+        </div>
+        <div class="panel-body"><div id="out-docs"></div></div>
       </div>
     </section>
 
-    <!-- 8 PLAN -->
-    <section class="step" id="step-plan">
-      <h2>8 &middot; Build the term plan</h2>
-      <p class="lede">The solver places lightweight <em>teaching units</em> onto calendar capacity under hard
-        constraints &mdash; prerequisite order, non-teaching days, window capacity. Lesson content is generated only
-        after a unit has a slot, never speculatively.</p>
+    <!-- 02 -->
+    <section class="stage" id="stage-curriculum">
+      <div class="stage-eyebrow">Stage 02 · Extraction</div>
+      <h2>Curriculum structure</h2>
+      <p class="thesis">A model proposes the topics, objectives and prerequisites hidden in the syllabus prose.
+        Everything it proposes is stamped <em>machine-extracted</em> and scored below certainty &mdash; an inferred
+        prerequisite must never wear the same authority as one the syllabus states outright.</p>
 
-      <div class="card">
-        <h3>Create teaching units</h3>
-        <p class="hint">One unit per objective, priority seeded from emphasis scores where available.</p>
-        <div class="row"><div><label>Default duration (minutes)</label><input id="tu-dur" type="number" value="60"></div></div>
-        <button class="act" id="btn-units">Create units for all objectives</button>
-        <div class="out" id="out-units"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Extract</h3>
+          <p class="panel-note">Nodes are embedded straight afterwards; the mapper's shortlist can only see
+            objectives that carry a vector.</p></div>
+        <div class="panel-body">
+          <div class="field-row"><div class="field wide"><label for="cur-doc">Source document</label><select id="cur-doc"></select></div></div>
+          <div class="actions"><button class="go" id="btn-extract">Extract curriculum</button></div>
+          <div class="readout" id="out-extract"></div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>Solve</h3>
-        <div class="row">
-          <div><label>Calendar</label><select id="plan-cal"></select></div>
-          <div><label>Subject</label><input id="plan-subject" value="Physics"></div>
-          <div><label>Class</label><input id="plan-class" value="XI-A"></div>
-        </div>
-        <button class="act" id="btn-plan">Build plan</button>
-        <div class="out" id="out-plan"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Graph</h3><button class="quiet" data-refresh="loadNodes">Reload</button></div>
+        <div class="panel-body"><div id="out-nodes"></div></div>
       </div>
     </section>
 
-    <!-- 9 REPLAN -->
-    <section class="step" id="step-replan">
-      <h2>9 &middot; Disruption &amp; replan</h2>
-      <p class="lede">The point of a good replan is how little it disturbs, not how clever the rearrangement is.
-        Churn against the previous plan is a first-class objective in the solver, not a post-hoc report.</p>
+    <!-- 03 -->
+    <section class="stage" id="stage-questions">
+      <div class="stage-eyebrow">Stage 03 · Extraction</div>
+      <h2>Questions &amp; marks</h2>
+      <p class="thesis">A question and its mark scheme are pulled out as <em>one linked entity</em>, both halves
+        carrying page attribution. The unmatched counts are reported rather than buried &mdash; a paper whose
+        questions mostly fail to match its scheme is telling you the numbering conventions differ.</p>
 
-      <div class="card">
-        <h3>Mark a day unavailable</h3>
-        <div class="row">
-          <div><label>Calendar</label><select id="dis-cal"></select></div>
-          <div><label>Date</label><input id="dis-date" type="date"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Parse a paper</h3></div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field"><label for="q-doc">Past paper</label><select id="q-doc"></select></div>
+            <div class="field"><label for="q-ms">Mark scheme</label><select id="q-ms"><option value="">none</option></select></div>
+          </div>
+          <div class="field-row" style="margin-top:.7rem">
+            <div class="field"><label for="q-year">Year</label><input id="q-year" type="number" placeholder="2024"></div>
+            <div class="field"><label for="q-ref">Paper reference</label><input id="q-ref" placeholder="final"></div>
+          </div>
+          <div class="actions"><button class="go" id="btn-questions">Parse questions</button></div>
+          <div class="readout" id="out-qparse"></div>
         </div>
-        <button class="act" id="btn-disrupt">School closed &mdash; disrupt this day</button>
-        <div class="out" id="out-disrupt"></div>
       </div>
 
-      <div class="card">
-        <h3>Replan</h3>
-        <p class="hint">Re-solves against the previous plan version so churn is measured, not assumed.</p>
-        <button class="act" id="btn-replan">Replan &amp; show what changed</button>
-        <div class="out" id="out-replan"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Extracted</h3><button class="quiet" data-refresh="loadQuestions">Reload</button></div>
+        <div class="panel-body"><div id="out-questions"></div></div>
       </div>
     </section>
 
-    <!-- 10 GENERATION -->
-    <section class="step" id="step-generation">
-      <h2>10 &middot; Grounded generation</h2>
-      <p class="lede">Verify-then-render, not generate-then-cite: retrieve evidence &rarr; generate structured claims
-        &rarr; verify each claim against its cited spans with a <em>different</em> model &rarr; reject the unsupported.
-        A claim is never stored as verified unless the verification chain actually said so.</p>
+    <!-- 04 -->
+    <section class="stage" id="stage-mapping">
+      <div class="stage-eyebrow">Stage 04 · Analysis</div>
+      <h2>Objective mapping</h2>
+      <p class="thesis">Four signals &mdash; embedding similarity, lexical overlap, syllabus terminology and a model's
+        judgement &mdash; combine into <em>weighted, multi-label</em> mappings. One question can assess several
+        objectives at once, and forcing it into a single label would misrepresent the paper.</p>
 
-      <div class="card">
-        <h3>Generate a lesson</h3>
-        <div class="row"><div><label>Scheduled unit</label><select id="gen-unit"></select></div></div>
-        <button class="act" id="btn-lesson">Generate lesson claims</button>
-        <div class="out" id="out-lesson"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Run the ensemble</h3>
+          <p class="panel-note">The confidence floor is a teacher's knob: raise it for precision, lower it for recall.</p></div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field" style="flex:3 1 300px"><label for="map-q">Question</label><select id="map-q"></select></div>
+            <div class="field"><label for="map-conf">Confidence floor</label><input id="map-conf" type="number" step="0.05" min="0" max="1" value="0.2"></div>
+          </div>
+          <div class="actions"><button class="go" id="btn-map">Map question</button></div>
+          <div class="readout" id="out-map"></div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>Generate practice questions</h3>
-        <div class="row">
-          <div><label>Objective</label><select id="gen-node"></select></div>
-          <div><label>Count</label><input id="gen-count" type="number" value="3"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>Stored mappings</h3><button class="quiet" data-refresh="loadMappings">Reload</button></div>
+        <div class="panel-body"><div id="out-mappings"></div></div>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section class="stage" id="stage-corrections">
+      <div class="stage-eyebrow">Stage 05 · Feedback</div>
+      <h2>Teacher corrections</h2>
+      <p class="thesis">A correction is written to the record verbatim and then applied: confidence pinned to
+        certain, method rewritten to <em>human-corrected</em>. This is the one signal the ensemble never argues
+        with, and the log of it is the asset that compounds.</p>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Adjust a mapping</h3>
+          <p class="panel-note">Choose a question in stage 04, then reload here.</p>
+          <button class="quiet" data-refresh="loadCorrectable">Reload</button></div>
+        <div class="panel-body"><div id="out-correctable"></div></div>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section class="stage" id="stage-emphasis">
+      <div class="stage-eyebrow">Stage 06 · Analysis</div>
+      <h2>Assessment emphasis</h2>
+      <p class="thesis">Five signals, weighted and normalised to a common scale: how often an objective is
+        assessed, how recently, for how many marks, whether it is on the current specification, and how
+        confident its extraction was. <em>Not</em> a frequency count wearing a formula.</p>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Compute</h3></div>
+        <div class="panel-body">
+          <div class="field-row"><div class="field"><label for="emph-year">Reference year</label><input id="emph-year" type="number" placeholder="2025"></div></div>
+          <div class="actions"><button class="go" id="btn-emphasis">Compute scores</button></div>
+          <div class="readout" id="out-emphasis"></div>
         </div>
-        <button class="act" id="btn-assess">Generate assessment</button>
-        <div class="out" id="out-assess"></div>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section class="stage" id="stage-calendar">
+      <div class="stage-eyebrow">Stage 07 · Capacity</div>
+      <h2>Calendar capacity</h2>
+      <p class="thesis">A term is modelled as available teaching <em>minutes</em>, not as a list of dates. A school
+        day is not a slot: assemblies, labs and swapped periods all change what a class actually gets, and the
+        solver needs that derived number.</p>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Academic calendar</h3></div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field"><label for="cal-school">School</label><input id="cal-school" value="pilot-school"></div>
+            <div class="field"><label for="cal-start">Term start</label><input id="cal-start" type="date"></div>
+            <div class="field"><label for="cal-end">Term end</label><input id="cal-end" type="date"></div>
+          </div>
+          <div class="field-row" style="margin-top:.7rem">
+            <div class="field wide"><label for="cal-off">Non-teaching dates</label><input id="cal-off" placeholder="2026-03-23, 2026-03-24"></div>
+          </div>
+          <div class="actions"><button class="go" id="btn-calendar">Create calendar</button></div>
+          <div class="readout" id="out-calendar"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Weekly timetable</h3>
+          <p class="panel-note">Each slot is expanded across every matching school day in the term.</p></div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field"><label for="win-cal">Calendar</label><select id="win-cal"></select></div>
+            <div class="field"><label for="win-subject">Subject</label><input id="win-subject" value="Data Structures"></div>
+            <div class="field"><label for="win-class">Class</label><input id="win-class" value="CS-4A"></div>
+          </div>
+          <div class="field-row" style="margin-top:.7rem">
+            <div class="field"><label for="win-day">Weekday</label>
+              <select id="win-day"><option value="0">Monday</option><option value="1">Tuesday</option>
+                <option value="2">Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option></select></div>
+            <div class="field"><label for="win-start">Starts</label><input id="win-start" type="time" value="09:00"></div>
+            <div class="field"><label for="win-end">Ends</label><input id="win-end" type="time" value="10:00"></div>
+          </div>
+          <div class="actions"><button class="go" id="btn-windows">Add slots</button></div>
+          <div class="readout" id="out-windows"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 -->
+    <section class="stage" id="stage-plan">
+      <div class="stage-eyebrow">Stage 08 · Solver</div>
+      <h2>Term plan</h2>
+      <p class="thesis">The solver places lightweight <em>teaching units</em>, not finished lessons. Rescheduling a
+        unit descriptor is cheap; rescheduling a lesson a teacher has already edited is expensive, and that
+        expense is what makes people refuse to replan at all.</p>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Teaching units</h3>
+          <p class="panel-note">One per objective, priority seeded from the emphasis scores.</p></div>
+        <div class="panel-body">
+          <div class="field-row"><div class="field"><label for="tu-dur">Minutes per unit</label><input id="tu-dur" type="number" value="60"></div></div>
+          <div class="actions"><button class="go" id="btn-units">Create units</button></div>
+          <div class="readout" id="out-units"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Solve</h3></div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field"><label for="plan-cal">Calendar</label><select id="plan-cal"></select></div>
+            <div class="field"><label for="plan-subject">Subject</label><input id="plan-subject" value="Data Structures"></div>
+            <div class="field"><label for="plan-class">Class</label><input id="plan-class" value="CS-4A"></div>
+          </div>
+          <div class="actions"><button class="go" id="btn-plan">Build plan</button></div>
+          <div class="readout" id="out-plan"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section class="stage" id="stage-replan">
+      <div class="stage-eyebrow">Stage 09 · Solver</div>
+      <h2>Disruption &amp; replan</h2>
+      <p class="thesis">A replan is judged by how little it disturbs, not by how clever the rearrangement is.
+        An optimal plan that rewrites three months of term after one closed day gets rejected by the teacher
+        every time &mdash; so <em>churn is a constraint in the solver</em>, not a report written afterwards.</p>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Close a day</h3></div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field"><label for="dis-cal">Calendar</label><select id="dis-cal"></select></div>
+            <div class="field"><label for="dis-date">Date</label><input id="dis-date" type="date"></div>
+          </div>
+          <div class="actions"><button class="go" id="btn-disrupt">Mark day unavailable</button></div>
+          <div class="readout" id="out-disrupt"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Replan</h3>
+          <p class="panel-note">Re-solved against the previous version, so churn is measured rather than assumed.</p></div>
+        <div class="panel-body">
+          <div class="actions" style="margin-top:0"><button class="go" id="btn-replan">Replan</button></div>
+          <div class="readout" id="out-replan"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="stage" id="stage-generation">
+      <div class="stage-eyebrow">Stage 10 · Generation</div>
+      <h2>Grounded generation</h2>
+      <p class="thesis">Verify, then render &mdash; never generate then cite. Evidence is retrieved, claims are
+        drafted against it, and a <em>different model</em> checks each claim against the spans it cited. A claim is
+        never stored as verified because it sounded confident.</p>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Lesson</h3></div>
+        <div class="panel-body">
+          <div class="field-row"><div class="field wide"><label for="gen-unit">Scheduled lesson</label><select id="gen-unit"></select></div></div>
+          <div class="actions"><button class="go" id="btn-lesson">Generate lesson</button></div>
+          <div class="readout" id="out-lesson"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Practice questions</h3></div>
+        <div class="panel-body">
+          <div class="field-row">
+            <div class="field" style="flex:3 1 280px"><label for="gen-node">Objective</label><select id="gen-node"></select></div>
+            <div class="field"><label for="gen-count">How many</label><input id="gen-count" type="number" value="3" min="1" max="8"></div>
+          </div>
+          <div class="actions"><button class="go" id="btn-assess">Generate questions</button></div>
+          <div class="readout" id="out-assess"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Everything generated so far</h3>
+          <p class="panel-note">Held in the database with its citations resolved, so nothing has to be
+            regenerated just to be read again.</p>
+          <button class="quiet" data-refresh="loadClaims">Reload</button></div>
+        <div class="panel-body"><div id="out-claims"></div></div>
       </div>
     </section>
   </main>
 </div>
 
 <script>
-// ---------- tiny helpers ----------
+'use strict';
+
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const pct = v => (v * 100).toFixed(0) + '%';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const pct = v => Math.round(v * 100) + '%';
+const band = v => v >= 0.75 ? 'ok' : v >= 0.4 ? 'warn' : 'crit';
 
 async function api(path, opts = {}) {
   const r = await fetch(path, opts);
   const body = await r.json().catch(() => null);
-  if (!r.ok) throw new Error(body?.detail ? JSON.stringify(body.detail) : `HTTP ${r.status}`);
+  if (!r.ok) throw new Error(body && body.detail ? JSON.stringify(body.detail) : 'HTTP ' + r.status);
   return body;
 }
-function busy(el, msg = 'Working') { el.innerHTML = `<span class="spin"></span> <span class="badge">${esc(msg)}&hellip;</span>`; }
-function fail(el, e) { el.innerHTML = `<span class="badge err">Failed</span><pre>${esc(e.message)}</pre>`; }
-function note(el, msg, kind = 'ok') { el.innerHTML = `<span class="badge ${kind}">${esc(msg)}</span>`; }
+const working = (el, msg) => { el.innerHTML = `<span class="working"><span class="spin"></span> ${esc(msg)}</span>`; };
+const failed  = (el, e)   => { el.innerHTML = `<span class="chip crit">failed</span><pre>${esc(e.message)}</pre>`; };
+const said    = (el, msg, kind = 'ok') => { el.innerHTML = `<span class="chip ${kind}">${esc(msg)}</span>`; };
 
 function table(rows, cols) {
   if (!rows.length) return '<div class="empty">Nothing here yet.</div>';
-  const head = cols.map(c => `<th>${esc(c.h)}</th>`).join('');
-  const body = rows.map(r => '<tr>' + cols.map(c => `<td>${c.f(r)}</td>`).join('') + '</tr>').join('');
-  return `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  const head = cols.map(c => `<th${c.right ? ' style="text-align:right"' : ''}>${esc(c.h)}</th>`).join('');
+  const body = rows.map(r => '<tr>' + cols.map(c => `<td${c.cls ? ' class="' + c.cls + '"' : ''}>${c.f(r)}</td>`).join('') + '</tr>').join('');
+  return `<div class="table-scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
-function confBadge(v) {
-  const k = v >= 0.75 ? 'ok' : v >= 0.4 ? 'warn' : 'err';
-  return `<span class="badge ${k}">${pct(v)}</span>`;
-}
-function fillSelect(sel, items, label, keep = true) {
-  const prev = keep ? sel.value : null;
+const meter = v => `<span class="meter"><span class="meter-track"><i class="meter-fill ${band(v)}" style="width:${Math.min(Math.max(v,0),1)*100}%"></i></span><span class="num">${pct(v)}</span></span>`;
+const figures = items => `<div class="figures">${items.map(i =>
+  `<div class="figure ${i.kind || ''}"><div class="figure-v">${esc(i.v)}</div><div class="figure-l">${esc(i.l)}</div></div>`).join('')}</div>`;
+
+function fillSelect(sel, items, label) {
+  const prev = sel.value;
   sel.innerHTML = items.map(i => `<option value="${i.id}">${esc(label(i))}</option>`).join('');
-  if (prev && items.some(i => i.id === prev)) sel.value = prev;
+  if (prev && items.some(i => String(i.id) === prev)) sel.value = prev;
 }
 
-// shared demo state, so later steps know what earlier ones produced
 const S = {
-  get planVersion() { return localStorage.getItem('cos.plan') || null; },
-  set planVersion(v) { localStorage.setItem('cos.plan', v); },
-  get question() { return localStorage.getItem('cos.q') || null; },
-  set question(v) { localStorage.setItem('cos.q', v); },
+  get plan() { try { return localStorage.getItem('cos.plan'); } catch { return null; } },
+  set plan(v) { try { localStorage.setItem('cos.plan', v); } catch {} },
+  get question() { try { return localStorage.getItem('cos.q'); } catch { return null; } },
+  set question(v) { try { localStorage.setItem('cos.q', v); } catch {} },
 };
 
-// ---------- navigation ----------
-document.querySelectorAll('#nav button').forEach(btn => {
-  btn.onclick = () => show(btn.dataset.step);
-});
+/* ---------- theme ---------- */
+(function theme() {
+  let saved = null;
+  try { saved = localStorage.getItem('cos.theme'); } catch {}
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  $('theme-toggle').onclick = () => {
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const now = document.documentElement.getAttribute('data-theme') || (dark ? 'dark' : 'light');
+    const next = now === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('cos.theme', next); } catch {}
+  };
+})();
+
+/* ---------- navigation ---------- */
+document.querySelectorAll('#spine button').forEach(b => { b.onclick = () => show(b.dataset.stage); });
+document.querySelectorAll('[data-refresh]').forEach(b => { b.onclick = () => window[b.dataset.refresh](); });
+
 function show(name) {
-  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.step === name));
-  $('step-' + name).classList.add('active');
-  location.hash = name;
-  (REFRESH[name] || (() => {}))();
+  if (!$('stage-' + name)) name = 'upload';
+  document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#spine button').forEach(b => b.classList.toggle('active', b.dataset.stage === name));
+  $('stage-' + name).classList.add('active');
+  history.replaceState(null, '', '#' + name);
+  (ON_ENTER[name] || (() => {}))();
 }
 
-// ---------- status ----------
-async function checkStatus() {
-  for (const [path, id] of [['/health', 'dot-api'], ['/health/db', 'dot-db']]) {
-    try { $(id).classList.add((await fetch(path)).ok ? 'ok' : 'err'); }
-    catch { $(id).classList.add('err'); }
+/* ---------- masthead ---------- */
+async function health() {
+  for (const [path, dot, chip] of [['/health', 'dot-api', 'chip-api'], ['/health/db', 'dot-db', 'chip-db']]) {
+    let ok = false;
+    try { ok = (await fetch(path)).ok; } catch {}
+    $(dot).className = 'dot ' + (ok ? 'ok' : 'crit');
+    $(chip).className = 'chip ' + (ok ? 'ok' : 'crit');
   }
 }
 
-// ---------- 1 documents ----------
+/** The eight quantities that flow through the pipeline, read as one row so
+ *  a stalled stage shows up as a zero beside a populated neighbour. One
+ *  request, not one per question. */
+const LEDGER = ['documents', 'spans', 'objectives', 'questions', 'mappings', 'units', 'scheduled', 'claims'];
+async function ledger() {
+  let s;
+  try { s = await api('/stats'); } catch { return; }
+  $('ledger').innerHTML = LEDGER.map(k =>
+    `<div class="ledger-cell"><div class="ledger-figure${s[k] ? '' : ' zero'}">${s[k]}</div>` +
+    `<div class="ledger-label">${k}</div></div>`).join('');
+}
+
+/* ---------- 01 documents ---------- */
 let DOCS = [];
 async function loadDocuments() {
   const el = $('out-docs');
@@ -503,40 +773,38 @@ async function loadDocuments() {
     DOCS = await api('/documents');
     el.innerHTML = table(DOCS, [
       { h: 'Title', f: d => esc(d.title) },
-      { h: 'Type', f: d => `<span class="badge info">${esc(d.doc_type)}</span>` },
-      { h: 'Parser', f: d => `<code>${esc(d.parser_used || '—')}</code>` },
-      { h: 'Spans', f: d => d.span_count },
+      { h: 'Type', f: d => `<span class="chip info">${esc(d.doc_type)}</span>` },
+      { h: 'Parser', f: d => `<span class="mono">${esc(d.parser_used || '—')}</span>` },
+      { h: 'Spans', right: true, cls: 'num-col', f: d => d.span_count },
     ]);
-    const docOpts = d => `${d.title} (${d.doc_type})`;
-    fillSelect($('cur-doc'), DOCS, docOpts);
-    fillSelect($('q-doc'), DOCS.filter(d => d.doc_type === 'past_paper'), docOpts);
-    const ms = DOCS.filter(d => d.doc_type === 'mark_scheme');
-    $('q-ms').innerHTML = '<option value="">— none —</option>' +
-      ms.map(d => `<option value="${d.id}">${esc(docOpts(d))}</option>`).join('');
-  } catch (e) { fail(el, e); }
+    const label = d => `${d.title} · ${d.doc_type}`;
+    fillSelect($('cur-doc'), DOCS, label);
+    fillSelect($('q-doc'), DOCS.filter(d => d.doc_type === 'past_paper'), label);
+    $('q-ms').innerHTML = '<option value="">none</option>' +
+      DOCS.filter(d => d.doc_type === 'mark_scheme').map(d => `<option value="${d.id}">${esc(label(d))}</option>`).join('');
+  } catch (e) { failed(el, e); }
 }
 
 $('btn-upload').onclick = async () => {
   const el = $('out-upload'), f = $('up-file').files[0];
-  if (!f) return note(el, 'Choose a file first', 'warn');
-  busy(el, 'Parsing (scanned PDFs go page-by-page through OCR, this can take a while)');
+  if (!f) return said(el, 'Choose a file first', 'warn');
+  working(el, 'Parsing — a scanned PDF goes page by page through OCR and can take a while');
   const fd = new FormData();
   fd.append('title', $('up-title').value || f.name);
   fd.append('doc_type', $('up-type').value);
   fd.append('file', f);
   try {
     const d = await api('/ingestion/documents', { method: 'POST', body: fd });
-    el.innerHTML = `<span class="badge ok">Parsed</span>
-      <div class="kpi-row">
-        <div class="kpi"><div class="v">${d.span_count}</div><div class="l">spans stored</div></div>
-        <div class="kpi"><div class="v">${d.parser_confidence == null ? '—' : pct(d.parser_confidence)}</div><div class="l">parser confidence</div></div>
-        <div class="kpi"><div class="v" style="font-size:1rem">${esc(d.parser_used || '—')}</div><div class="l">parser used</div></div>
-      </div>`;
-    await loadDocuments();
-  } catch (e) { fail(el, e); }
+    el.innerHTML = figures([
+      { v: d.span_count, l: 'spans stored', kind: 'ok' },
+      { v: d.parser_confidence == null ? '—' : pct(d.parser_confidence), l: 'parser confidence' },
+      { v: d.parser_used || '—', l: 'parser reached' },
+    ]);
+    await loadDocuments(); ledger();
+  } catch (e) { failed(el, e); }
 };
 
-// ---------- 2 curriculum ----------
+/* ---------- 02 curriculum ---------- */
 let NODES = [];
 async function loadNodes() {
   const el = $('out-nodes');
@@ -544,63 +812,57 @@ async function loadNodes() {
     NODES = await api('/curriculum-nodes');
     const edges = await api('/curriculum-edges');
     const prereq = edges.filter(e => e.edge_type === 'prerequisite').length;
-    el.innerHTML = `<div class="kpi-row">
-        <div class="kpi"><div class="v">${NODES.length}</div><div class="l">nodes</div></div>
-        <div class="kpi"><div class="v">${edges.length}</div><div class="l">edges</div></div>
-        <div class="kpi"><div class="v">${prereq}</div><div class="l">prerequisites</div></div>
-      </div>` + table(NODES, [
-      { h: 'Ref', f: n => `<code>${esc(n.syllabus_ref || '—')}</code>` },
-      { h: 'Type', f: n => `<span class="badge info">${esc(n.node_type)}</span>` },
+    el.innerHTML = figures([
+      { v: NODES.length, l: 'nodes' },
+      { v: edges.length, l: 'edges' },
+      { v: prereq, l: 'prerequisites' },
+    ]) + table(NODES, [
+      { h: 'Ref', cls: 'mono', f: n => esc(n.syllabus_ref || '—') },
+      { h: 'Kind', f: n => `<span class="chip">${esc(n.node_type)}</span>` },
       { h: 'Label', f: n => esc(n.label) },
-      { h: 'Origin', f: n => `<span class="badge">${esc(n.origin)}</span>` },
-      { h: 'Confidence', f: n => confBadge(n.confidence) },
+      { h: 'Origin', f: n => `<span class="chip ${n.origin === 'official' ? 'ok' : ''}">${esc(n.origin)}</span>` },
+      { h: 'Confidence', f: n => meter(n.confidence) },
     ]);
     fillSelect($('gen-node'), NODES, n => `${n.syllabus_ref || ''} ${n.label}`.trim());
-  } catch (e) { fail(el, e); }
+  } catch (e) { failed(el, e); }
 }
 
 $('btn-extract').onclick = async () => {
   const el = $('out-extract'), id = $('cur-doc').value;
-  if (!id) return note(el, 'Upload a syllabus first', 'warn');
-  busy(el, 'Asking the LLM to extract the curriculum structure');
+  if (!id) return said(el, 'Upload a syllabus first', 'warn');
+  working(el, 'Reading the syllabus and proposing a structure');
   try {
     const nodes = await api(`/ingestion/documents/${id}/curriculum`, { method: 'POST' });
-    el.innerHTML = `<span class="badge ok">Extracted ${nodes.length} nodes</span>
-      <span class="badge"><span class="spin"></span> embedding for retrieval&hellip;</span>`;
-    // The mapper's shortlist only sees embedded nodes, so this has to
-    // happen before step 4 can auto-shortlist candidates.
-    let embedded = 0;
-    try {
-      embedded = (await api('/ingestion/curriculum/embeddings', { method: 'POST' })).nodes_embedded;
-    } catch (e) {
-      el.innerHTML = `<span class="badge ok">Extracted ${nodes.length} nodes</span>
-        <span class="badge warn">embedding unavailable — mapping will need explicit candidates</span>`;
-    }
-    if (embedded) note(el, `Extracted ${nodes.length} nodes, embedded ${embedded}`);
-    await loadNodes();
-  } catch (e) { fail(el, e); }
+    el.innerHTML = `<span class="chip ok">${nodes.length} nodes extracted</span> <span class="working"><span class="spin"></span> embedding for retrieval</span>`;
+    let embedded = 0, warn = '';
+    try { embedded = (await api('/ingestion/curriculum/embeddings', { method: 'POST' })).nodes_embedded; }
+    catch { warn = ' <span class="chip warn">embedding unavailable — mapping will need explicit candidates</span>'; }
+    el.innerHTML = `<span class="chip ok">${nodes.length} nodes extracted</span> ` +
+      (embedded ? `<span class="chip ok">${embedded} embedded</span>` : '') + warn;
+    await loadNodes(); ledger();
+  } catch (e) { failed(el, e); }
 };
 
-// ---------- 3 questions ----------
+/* ---------- 03 questions ---------- */
 let QUESTIONS = [];
 async function loadQuestions() {
   const el = $('out-questions');
   try {
     QUESTIONS = await api('/questions');
     el.innerHTML = table(QUESTIONS, [
-      { h: 'Ref', f: q => `<code>${esc(q.question_ref)}</code>` },
-      { h: 'Question', f: q => esc(q.text) },
-      { h: 'Marks', f: q => q.marks ?? '—' },
+      { h: 'Reference', cls: 'mono', f: q => esc(q.question_ref) },
+      { h: 'Question', f: q => esc(q.text.slice(0, 150)) },
+      { h: 'Marks', right: true, cls: 'num-col', f: q => q.marks ?? '—' },
     ]);
-    fillSelect($('map-q'), QUESTIONS, q => `${q.question_ref} — ${q.text.slice(0, 60)}`);
-    if (S.question) $('map-q').value = S.question;
-  } catch (e) { fail(el, e); }
+    fillSelect($('map-q'), QUESTIONS, q => `${q.question_ref} — ${q.text.slice(0, 64)}`);
+    if (S.question && QUESTIONS.some(q => q.id === S.question)) $('map-q').value = S.question;
+  } catch (e) { failed(el, e); }
 }
 
 $('btn-questions').onclick = async () => {
   const el = $('out-qparse'), id = $('q-doc').value;
-  if (!id) return note(el, 'Upload a past paper first', 'warn');
-  busy(el, 'Parsing questions');
+  if (!id) return said(el, 'Upload a past paper first', 'warn');
+  working(el, 'Parsing questions');
   try {
     const r = await api(`/ingestion/documents/${id}/questions`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -610,68 +872,68 @@ $('btn-questions').onclick = async () => {
         paper_ref: $('q-ref').value || null,
       }),
     });
-    el.innerHTML = `<div class="kpi-row">
-      <div class="kpi ok"><div class="v">${r.questions_created}</div><div class="l">questions</div></div>
-      <div class="kpi ok"><div class="v">${r.mark_scheme_entries_created}</div><div class="l">mark scheme entries</div></div>
-      <div class="kpi warn"><div class="v">${r.questions_without_mark_scheme.length}</div><div class="l">questions unmatched</div></div>
-      <div class="kpi warn"><div class="v">${r.mark_scheme_entries_without_question.length}</div><div class="l">entries orphaned</div></div>
-    </div><p class="hint" style="margin-top:.6rem">Unmatched counts are the parser's honesty signal, not hidden failure.</p>`;
-    await loadQuestions();
-  } catch (e) { fail(el, e); }
+    el.innerHTML = figures([
+      { v: r.questions_created, l: 'questions', kind: 'ok' },
+      { v: r.mark_scheme_entries_created, l: 'scheme entries', kind: 'ok' },
+      { v: r.questions_without_mark_scheme.length, l: 'unmatched questions', kind: r.questions_without_mark_scheme.length ? 'warn' : '' },
+      { v: r.mark_scheme_entries_without_question.length, l: 'orphan entries', kind: r.mark_scheme_entries_without_question.length ? 'warn' : '' },
+    ]) + `<p class="aside">The unmatched counts are the parser being honest, not the parser failing quietly.</p>`;
+    await loadQuestions(); ledger();
+  } catch (e) { failed(el, e); }
 };
 
-// ---------- 4 mapping ----------
+/* ---------- 04 mapping ---------- */
+const mappingRows = ms => table(ms, [
+  { h: 'Objective', f: m => esc(m.node_label) },
+  { h: 'Weight', f: m => meter(m.weight) },
+  { h: 'Confidence', f: m => meter(m.confidence) },
+  { h: 'Method', f: m => `<span class="chip ${m.mapping_method === 'human_corrected' ? 'ok' : ''}">${esc(m.mapping_method)}</span>` },
+]);
+
 async function loadMappings() {
   const el = $('out-mappings'), qid = $('map-q').value;
-  if (!qid) return el.innerHTML = '<div class="empty">No question selected.</div>';
-  try {
-    const ms = await api(`/questions/${qid}/mappings`);
-    el.innerHTML = renderMappings(ms);
-  } catch (e) { fail(el, e); }
-}
-function renderMappings(ms) {
-  return table(ms, [
-    { h: 'Objective', f: m => esc(m.node_label) },
-    { h: 'Weight', f: m => `<div class="bar"><i style="width:${m.weight * 100}%"></i></div> ${m.weight.toFixed(2)}` },
-    { h: 'Confidence', f: m => confBadge(m.confidence) },
-    { h: 'Method', f: m => `<span class="badge ${m.mapping_method === 'human_corrected' ? 'ok' : ''}">${esc(m.mapping_method)}</span>` },
-  ]);
+  if (!qid) return void (el.innerHTML = '<div class="empty">No question selected.</div>');
+  try { el.innerHTML = mappingRows(await api(`/questions/${qid}/mappings`)); }
+  catch (e) { failed(el, e); }
 }
 $('map-q').onchange = () => { S.question = $('map-q').value; loadMappings(); };
 
 $('btn-map').onclick = async () => {
   const el = $('out-map'), qid = $('map-q').value;
-  if (!qid) return note(el, 'Parse some questions first', 'warn');
+  if (!qid) return said(el, 'Parse some questions first', 'warn');
   S.question = qid;
-  busy(el, 'Running the ensemble (embedding + lexical + terminology + LLM)');
+  working(el, 'Running the ensemble — embedding, lexical, terminology, model');
   try {
     const ms = await api(`/mappings/questions/${qid}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ min_confidence: +$('map-conf').value }),
     });
-    el.innerHTML = `<span class="badge ok">${ms.length} mapping(s)</span>` + renderMappings(
-      ms.map(m => ({ ...m, node_label: (NODES.find(n => n.id === m.node_id) || {}).label || m.node_id }))
-    );
-    await loadMappings();
-  } catch (e) { fail(el, e); }
+    el.innerHTML = ms.length
+      ? `<span class="chip ok">${ms.length} objective${ms.length === 1 ? '' : 's'} above the floor</span>` +
+        mappingRows(ms.map(m => ({ ...m, node_label: (NODES.find(n => n.id === m.node_id) || {}).label || m.node_id })))
+      : `<span class="chip warn">nothing above the confidence floor</span>
+         <p class="aside">Lower the floor to trade precision for recall, or check the objective actually exists.</p>`;
+    await loadMappings(); ledger();
+  } catch (e) { failed(el, e); }
 };
 
-// ---------- 5 corrections ----------
+/* ---------- 05 corrections ---------- */
 async function loadCorrectable() {
   const el = $('out-correctable'), qid = S.question || $('map-q').value;
-  if (!qid) return el.innerHTML = '<div class="empty">Pick a question in step 4 first.</div>';
+  if (!qid) return void (el.innerHTML = '<div class="empty">Pick a question in stage 04 first.</div>');
   try {
     const ms = await api(`/questions/${qid}/mappings`);
-    if (!ms.length) return el.innerHTML = '<div class="empty">No mappings on that question yet.</div>';
+    if (!ms.length) return void (el.innerHTML = '<div class="empty">That question has no mappings yet.</div>');
     el.innerHTML = table(ms, [
       { h: 'Objective', f: m => esc(m.node_label) },
-      { h: 'Current weight', f: m => m.weight.toFixed(2) },
-      { h: 'Method', f: m => `<span class="badge ${m.mapping_method === 'human_corrected' ? 'ok' : ''}">${esc(m.mapping_method)}</span>` },
-      { h: 'Corrected weight', f: m => `<input style="width:90px" type="number" step="0.05" min="0" max="1" value="${m.weight.toFixed(2)}" id="cw-${m.id}">` },
-      { h: '', f: m => `<button class="act sm" onclick="correct('${m.id}', ${m.weight})">Save</button>` },
+      { h: 'Current', f: m => meter(m.weight) },
+      { h: 'Method', f: m => `<span class="chip ${m.mapping_method === 'human_corrected' ? 'ok' : ''}">${esc(m.mapping_method)}</span>` },
+      { h: 'Corrected weight', f: m => `<input style="width:5.5rem" type="number" step="0.05" min="0" max="1" value="${m.weight.toFixed(2)}" id="cw-${m.id}">` },
+      { h: '', f: m => `<button class="quiet" onclick="correct('${m.id}',${m.weight})">Save</button>` },
     ]);
-  } catch (e) { fail(el, e); }
+  } catch (e) { failed(el, e); }
 }
+
 async function correct(id, before) {
   const el = $('out-correctable'), after = +$('cw-' + id).value;
   try {
@@ -679,53 +941,53 @@ async function correct(id, before) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         entity_type: 'question_node_mapping', entity_id: id,
-        before_value: { weight: before }, after_value: { weight: after },
-        teacher_id: 'demo-teacher',
+        before_value: { weight: before }, after_value: { weight: after }, teacher_id: 'demo-teacher',
       }),
     });
     await loadCorrectable();
     el.insertAdjacentHTML('afterbegin',
-      '<span class="badge ok">Correction logged &mdash; confidence pinned to 100%, method now human_corrected</span>');
-  } catch (e) { fail(el, e); }
+      '<p style="margin:0 0 .7rem"><span class="chip ok">correction recorded</span> ' +
+      '<span class="chip ok">confidence now certain</span> <span class="chip ok">method now human_corrected</span></p>');
+  } catch (e) { failed(el, e); }
 }
 
-// ---------- 6 emphasis ----------
+/* ---------- 06 emphasis ---------- */
+let EMPHASIS = {};
 $('btn-emphasis').onclick = async () => {
   const el = $('out-emphasis');
-  busy(el, 'Scoring');
+  working(el, 'Scoring');
   try {
     const y = $('emph-year').value;
     const rows = await api('/emphasis/' + (y ? `?current_year=${y}` : ''));
-    if (!rows.length) return el.innerHTML = '<div class="empty">No mapped questions yet — emphasis needs mappings from step 4.</div>';
+    if (!rows.length) return void (el.innerHTML =
+      '<div class="empty">No mapped questions yet — emphasis is computed from stage 04.</div>');
     rows.sort((a, b) => b.score - a.score);
-    const byId = Object.fromEntries(NODES.map(n => [n.id, n.label]));
-    el.innerHTML = table(rows, [
-      { h: 'Objective', f: r => esc(byId[r.node_id] || r.node_id) },
-      { h: 'Score', f: r => `<div class="bar"><i style="width:${Math.min(r.score, 1) * 100}%"></i></div> ${r.score.toFixed(3)}` },
-      { h: 'Freq', f: r => r.frequency.toFixed(2) },
-      { h: 'Recency', f: r => r.recency.toFixed(2) },
-      { h: 'Marks', f: r => r.marks.toFixed(2) },
-      { h: 'Syllabus', f: r => r.syllabus.toFixed(2) },
-      { h: 'Structural', f: r => r.structural.toFixed(2) },
-    ]);
+    const label = Object.fromEntries(NODES.map(n => [n.id, n.label]));
     EMPHASIS = Object.fromEntries(rows.map(r => [r.node_id, r.score]));
-  } catch (e) { fail(el, e); }
+    el.innerHTML = table(rows, [
+      { h: 'Objective', f: r => esc(label[r.node_id] || r.node_id) },
+      { h: 'Emphasis', f: r => meter(r.score) },
+      { h: 'Freq', right: true, cls: 'num-col', f: r => r.frequency.toFixed(2) },
+      { h: 'Recency', right: true, cls: 'num-col', f: r => r.recency.toFixed(2) },
+      { h: 'Marks', right: true, cls: 'num-col', f: r => r.marks.toFixed(2) },
+      { h: 'Spec', right: true, cls: 'num-col', f: r => r.syllabus.toFixed(2) },
+      { h: 'Struct', right: true, cls: 'num-col', f: r => r.structural.toFixed(2) },
+    ]) + '<p class="aside">All five components are normalised to a common scale, so the weights mean what they say.</p>';
+  } catch (e) { failed(el, e); }
 };
-let EMPHASIS = {};
 
-// ---------- 7 calendar ----------
-let CALS = [];
+/* ---------- 07 calendar ---------- */
 async function loadCalendars() {
   try {
-    CALS = await api('/calendars/');
-    const label = c => `${c.school_id} · ${c.term_start} → ${c.term_end} (${c.day_count}d)`;
-    ['win-cal', 'plan-cal', 'dis-cal'].forEach(id => fillSelect($(id), CALS, label));
-  } catch (e) { /* status badge already reports DB trouble */ }
+    const cals = await api('/calendars/');
+    const label = c => `${c.school_id} · ${c.term_start} → ${c.term_end}`;
+    ['win-cal', 'plan-cal', 'dis-cal'].forEach(id => fillSelect($(id), cals, label));
+  } catch {}
 }
 $('btn-calendar').onclick = async () => {
   const el = $('out-calendar');
-  if (!$('cal-start').value || !$('cal-end').value) return note(el, 'Pick term start and end', 'warn');
-  busy(el, 'Creating');
+  if (!$('cal-start').value || !$('cal-end').value) return said(el, 'Set the term start and end', 'warn');
+  working(el, 'Modelling the term');
   try {
     const c = await api('/calendars/', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -734,57 +996,54 @@ $('btn-calendar').onclick = async () => {
         non_teaching_dates: $('cal-off').value.split(',').map(s => s.trim()).filter(Boolean),
       }),
     });
-    note(el, `Calendar created — ${c.day_count} days modelled`);
+    el.innerHTML = figures([{ v: c.day_count, l: 'days modelled', kind: 'ok' }]);
     await loadCalendars();
-  } catch (e) { fail(el, e); }
+  } catch (e) { failed(el, e); }
 };
 $('btn-windows').onclick = async () => {
   const el = $('out-windows'), cal = $('win-cal').value;
-  if (!cal) return note(el, 'Create a calendar first', 'warn');
-  busy(el, 'Expanding slots across the term');
+  if (!cal) return said(el, 'Create a calendar first', 'warn');
+  working(el, 'Expanding the slot across the term');
   try {
     const r = await api(`/calendars/${cal}/instruction-windows`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        slots: [{
-          subject: $('win-subject').value, class_id: $('win-class').value,
-          weekday: +$('win-day').value, start_time: $('win-start').value, end_time: $('win-end').value,
-        }],
-      }),
+      body: JSON.stringify({ slots: [{
+        subject: $('win-subject').value, class_id: $('win-class').value,
+        weekday: +$('win-day').value, start_time: $('win-start').value, end_time: $('win-end').value }] }),
     });
-    note(el, `${r.windows_created} instruction windows created`);
-  } catch (e) { fail(el, e); }
+    el.innerHTML = figures([{ v: r.windows_created, l: 'teaching windows', kind: 'ok' }]);
+  } catch (e) { failed(el, e); }
 };
 
-// ---------- 8 plan ----------
+/* ---------- 08 plan ---------- */
 $('btn-units').onclick = async () => {
   const el = $('out-units');
   const objectives = NODES.filter(n => n.node_type === 'objective');
   const targets = objectives.length ? objectives : NODES;
-  if (!targets.length) return note(el, 'Extract a curriculum first', 'warn');
-  busy(el, 'Creating teaching units');
+  if (!targets.length) return said(el, 'Extract a curriculum first', 'warn');
+  working(el, 'Creating teaching units');
   try {
-    const units = await api('/ingestion/teaching-units', {
+    const made = await api('/ingestion/teaching-units', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        node_ids: targets.map(n => n.id),
-        default_duration_minutes: +$('tu-dur').value,
-        priorities: EMPHASIS,
+        node_ids: targets.map(n => n.id), default_duration_minutes: +$('tu-dur').value, priorities: EMPHASIS,
       }),
     });
     const all = await api('/teaching-units');
-    el.innerHTML = `<span class="badge ok">${units.length} new, ${all.length} total</span>` + table(all, [
-      { h: 'Objective', f: u => esc(u.node_label) },
-      { h: 'Minutes', f: u => u.duration_minutes },
-      { h: 'Priority', f: u => u.priority.toFixed(2) },
-    ]);
-  } catch (e) { fail(el, e); }
+    el.innerHTML = `<span class="chip ok">${made.length} new</span> <span class="chip">${all.length} total</span>` +
+      table(all, [
+        { h: 'Objective', f: u => esc(u.node_label) },
+        { h: 'Minutes', right: true, cls: 'num-col', f: u => u.duration_minutes },
+        { h: 'Priority', f: u => meter(Math.min(u.priority, 1)) },
+      ]);
+    ledger();
+  } catch (e) { failed(el, e); }
 };
 
 $('btn-plan').onclick = async () => {
   const el = $('out-plan'), cal = $('plan-cal').value;
-  if (!cal) return note(el, 'Create a calendar first', 'warn');
-  busy(el, 'Solving (CP-SAT)');
+  if (!cal) return said(el, 'Create a calendar first', 'warn');
+  working(el, 'Solving — CP-SAT');
   try {
     const units = await api('/teaching-units');
     const plan = await api('/planning/plans', {
@@ -794,139 +1053,158 @@ $('btn-plan').onclick = async () => {
         node_ids: units.map(u => u.node_id), trigger_reason: 'initial_plan',
       }),
     });
-    S.planVersion = plan.plan_version_id;
-    el.innerHTML = renderPlan(plan);
-    await renderSchedule(el, plan.plan_version_id);
-  } catch (e) { fail(el, e); }
+    S.plan = plan.plan_version_id;
+    const unsched = plan.unscheduled_unit_ids.length;
+    el.innerHTML = figures([
+      { v: plan.assignments.length, l: 'lessons placed', kind: 'ok' },
+      { v: unsched, l: 'unscheduled', kind: unsched ? 'warn' : 'ok' },
+      { v: plan.status, l: 'solver status' },
+    ]);
+    await schedule(el, plan.plan_version_id); ledger();
+  } catch (e) { failed(el, e); }
 };
 
-function renderPlan(plan) {
-  const unsched = plan.unscheduled_unit_ids.length;
-  return `<div class="kpi-row">
-    <div class="kpi ok"><div class="v">${plan.assignments.length}</div><div class="l">units scheduled</div></div>
-    <div class="kpi ${unsched ? 'warn' : 'ok'}"><div class="v">${unsched}</div><div class="l">unscheduled</div></div>
-    <div class="kpi"><div class="v" style="font-size:1rem">${esc(plan.status)}</div><div class="l">solver status</div></div>
-  </div>`;
-}
-async function renderSchedule(el, planId) {
+async function schedule(el, planId) {
   try {
     const rows = await api(`/planning/plans/${planId}`);
-    el.insertAdjacentHTML('beforeend', table(rows, [
-      { h: 'Date', f: r => r.date },
+    if (el) el.insertAdjacentHTML('beforeend', table(rows, [
+      { h: 'Date', cls: 'mono', f: r => r.date },
       { h: 'Lesson', f: r => esc(r.node_label) },
-      { h: 'Minutes', f: r => r.scheduled_minutes },
-      { h: 'Status', f: r => `<span class="badge">${esc(r.status)}</span>` },
+      { h: 'Minutes', right: true, cls: 'num-col', f: r => r.scheduled_minutes },
+      { h: 'Status', f: r => `<span class="chip">${esc(r.status)}</span>` },
     ]));
     fillSelect($('gen-unit'), rows, r => `${r.date} — ${r.node_label}`);
-  } catch { /* an empty plan has no detail rows; the KPIs already say so */ }
+  } catch {}
 }
 
-// ---------- 9 replan ----------
+/** This browser's plan, or the newest one already in the database — a
+ *  fresh browser has no stored id but the plan still exists. */
+async function currentPlan() {
+  if (S.plan) return S.plan;
+  try {
+    const plans = (await api('/planning/plans')).filter(p => p.scheduled_count > 0);
+    if (plans.length) { S.plan = plans[0].id; return plans[0].id; }
+  } catch {}
+  return null;
+}
+
+/* ---------- 09 replan ---------- */
 $('btn-disrupt').onclick = async () => {
   const el = $('out-disrupt'), cal = $('dis-cal').value, d = $('dis-date').value;
-  if (!cal || !d) return note(el, 'Pick a calendar and a date', 'warn');
-  busy(el, 'Marking day unavailable');
+  if (!cal || !d) return said(el, 'Choose a calendar and a date', 'warn');
+  working(el, 'Withdrawing that day');
   try {
     const r = await api(`/calendars/${cal}/disrupt`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: d, reason: 'school closed' }),
     });
-    note(el, `${r.date} marked non-teaching — ${r.windows_disrupted} window(s) withdrawn`);
-  } catch (e) { fail(el, e); }
+    el.innerHTML = `<span class="chip warn">${esc(r.date)} closed</span> <span class="chip">${r.windows_disrupted} window(s) withdrawn</span>`;
+  } catch (e) { failed(el, e); }
 };
 
 $('btn-replan').onclick = async () => {
   const el = $('out-replan'), cal = $('dis-cal').value;
-  if (!cal) return note(el, 'Pick a calendar', 'warn');
-  const previous = await currentPlanVersion();
-  if (!previous) return note(el, 'Build an initial plan in step 8 first', 'warn');
-  busy(el, 'Replanning with churn minimisation');
+  if (!cal) return said(el, 'Choose a calendar', 'warn');
+  const previous = await currentPlan();
+  if (!previous) return said(el, 'Build a plan in stage 08 first', 'warn');
+  working(el, 'Replanning, minimising churn against the previous version');
   try {
     const units = await api('/teaching-units');
     const plan = await api('/planning/plans', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         calendar_id: cal, subject: $('plan-subject').value, class_id: $('plan-class').value,
-        node_ids: units.map(u => u.node_id),
-        trigger_reason: 'calendar_disruption', parent_version_id: previous,
+        node_ids: units.map(u => u.node_id), trigger_reason: 'calendar_disruption', parent_version_id: previous,
       }),
     });
-    el.innerHTML = `<div class="kpi-row">
-        <div class="kpi ok"><div class="v">${plan.unchanged_count}</div><div class="l">lessons unchanged</div></div>
-        <div class="kpi warn"><div class="v">${plan.moved_count}</div><div class="l">lessons moved</div></div>
-        <div class="kpi ${plan.unscheduled_unit_ids.length ? 'warn' : 'ok'}"><div class="v">${plan.unscheduled_unit_ids.length}</div><div class="l">dropped</div></div>
-      </div>
-      <p class="hint" style="margin-top:.7rem">A good replan is measured by how little it disturbs &mdash;
-        that first number is the one that matters.</p>`;
-    S.planVersion = plan.plan_version_id;
-    await renderSchedule(el, plan.plan_version_id);
-  } catch (e) { fail(el, e); }
+    S.plan = plan.plan_version_id;
+    el.innerHTML = figures([
+      { v: plan.unchanged_count, l: 'lessons unchanged', kind: 'ok' },
+      { v: plan.moved_count, l: 'moved', kind: plan.moved_count ? 'warn' : 'ok' },
+      { v: plan.unscheduled_unit_ids.length, l: 'dropped', kind: plan.unscheduled_unit_ids.length ? 'crit' : 'ok' },
+    ]) + '<p class="aside">The first figure is the one that matters. A replan is judged by how little it disturbs.</p>';
+    await schedule(el, plan.plan_version_id); ledger();
+  } catch (e) { failed(el, e); }
 };
 
-// ---------- 10 generation ----------
-function renderClaims(claims) {
-  if (!claims.length) return '<div class="empty">No claims survived — check that the objective has retrievable evidence spans.</div>';
-  const kinds = { verified: 'ok', partially_supported: 'warn', unsupported: 'err', not_checked: '' };
-  return table(claims, [
-    { h: 'Claim', f: c => esc(c.text) },
-    { h: 'Verification', f: c => `<span class="badge ${kinds[c.verification_status] ?? ''}">${esc(c.verification_status)}</span>` },
-    { h: 'Confidence', f: c => confBadge(c.confidence) },
-  ]);
+/* ---------- 10 generation ---------- */
+const VERDICT = { verified: 'ok', partially_supported: 'warn', unsupported: 'crit', not_checked: '' };
+
+function claimList(claims) {
+  if (!claims.length) return '<div class="empty">Nothing generated yet.</div>';
+  return claims.map(c => `
+    <div class="claim">
+      <div class="claim-head">
+        <span class="chip ${VERDICT[c.verification_status] ?? ''}">${esc(c.verification_status)}</span>
+        ${meter(c.confidence)}
+      </div>
+      <p class="claim-text">${esc(c.text)}</p>
+      ${(c.citations || []).map(ci =>
+        `<div class="cite"><b>${esc(ci.document_title)}</b> · p.${ci.page} — ${esc(ci.excerpt)}</div>`).join('')}
+    </div>`).join('');
 }
+
 $('btn-lesson').onclick = async () => {
   const el = $('out-lesson'), id = $('gen-unit').value;
-  if (!id) return note(el, 'Build a plan first — lessons are generated only for scheduled units', 'warn');
-  busy(el, 'Retrieving evidence, generating, then verifying with a second model');
-  try { el.innerHTML = renderClaims(await api(`/generation/lessons/${id}`, { method: 'POST' })); }
-  catch (e) { fail(el, e); }
+  if (!id) return said(el, 'Build a plan first — lessons are only written for scheduled units', 'warn');
+  working(el, 'Retrieving evidence, drafting, then verifying with a second model');
+  try {
+    el.innerHTML = claimList(await api(`/generation/lessons/${id}`, { method: 'POST' }));
+    loadClaims(); ledger();
+  } catch (e) { failed(el, e); }
 };
+
 $('btn-assess').onclick = async () => {
   const el = $('out-assess'), id = $('gen-node').value;
-  if (!id) return note(el, 'Extract a curriculum first', 'warn');
-  busy(el, 'Generating and verifying practice questions');
+  if (!id) return said(el, 'Extract a curriculum first', 'warn');
+  working(el, 'Drafting practice questions, then verifying each one');
   try {
-    el.innerHTML = renderClaims(await api(`/generation/assessments/${id}`, {
+    el.innerHTML = claimList(await api(`/generation/assessments/${id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ count: +$('gen-count').value }),
     }));
-  } catch (e) { fail(el, e); }
+    loadClaims(); ledger();
+  } catch (e) { failed(el, e); }
 };
 
-/** The plan this browser built, or — for a browser that never built one —
- * the newest plan already in the database. Without the fallback a fresh
- * visitor sees an empty generation step even though a plan exists. */
-async function currentPlanVersion() {
-  if (S.planVersion) return S.planVersion;
+async function loadClaims() {
+  const el = $('out-claims');
   try {
-    const plans = (await api('/planning/plans')).filter(p => p.scheduled_count > 0);
-    if (plans.length) { S.planVersion = plans[0].id; return plans[0].id; }
-  } catch { /* listing is best-effort; the step still works once a plan is built */ }
-  return null;
+    const claims = await api('/claims');
+    const tally = claims.reduce((a, c) => (a[c.verification_status] = (a[c.verification_status] || 0) + 1, a), {});
+    el.innerHTML = (claims.length ? figures([
+      { v: tally.verified || 0, l: 'verified', kind: 'ok' },
+      { v: tally.partially_supported || 0, l: 'partly supported', kind: 'warn' },
+      { v: tally.unsupported || 0, l: 'rejected', kind: 'crit' },
+      { v: tally.not_checked || 0, l: 'unchecked' },
+    ]) : '') + claimList(claims);
+  } catch (e) { failed(el, e); }
 }
 
-// ---------- per-step refresh ----------
-const REFRESH = {
+/* ---------- what each stage loads on entry ---------- */
+const ON_ENTER = {
   upload: loadDocuments,
   curriculum: () => { loadDocuments(); loadNodes(); },
   questions: () => { loadDocuments(); loadQuestions(); },
-  mapping: () => { loadQuestions(); loadNodes(); loadMappings(); },
+  mapping: async () => { await loadQuestions(); loadNodes(); loadMappings(); },
   corrections: loadCorrectable,
   emphasis: loadNodes,
   calendar: loadCalendars,
   plan: () => { loadCalendars(); loadNodes(); },
   replan: loadCalendars,
   generation: async () => {
-    loadNodes();
-    const plan = await currentPlanVersion();
-    // Only the gen-unit dropdown is wanted here, not another schedule
-    // table — renderSchedule fills the select as a side effect, so give it
-    // a throwaway node to append its table to.
-    if (plan) renderSchedule(document.createElement('div'), plan);
+    loadNodes(); loadClaims();
+    const p = await currentPlan();
+    if (p) schedule(null, p);   // fills the lesson picker; no second table wanted here
   },
 };
 
-checkStatus();
-show(location.hash.slice(1) || 'upload');
+/* ---------- boot ---------- */
+(function boot() {
+  health();
+  ledger();
+  show((location.hash || '#upload').slice(1));
+})();
 </script>
 </body>
 </html>
