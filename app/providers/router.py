@@ -21,7 +21,8 @@ from app.providers.base import ProviderError, ProviderUnavailableError
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
+T = TypeVar("T")  # provider type
+R = TypeVar("R")  # call() return type — independent of T, e.g. LLMResponse from an LLMProvider
 
 
 @dataclass
@@ -86,7 +87,7 @@ class ProviderRouter(Generic[T]):
             cooldown_seconds=circuit_breaker_cooldown_seconds,
         )
 
-    async def call(self, fn: Callable[[T], Awaitable[T]]) -> T:
+    async def call(self, fn: Callable[[T], Awaitable[R]]) -> R:
         provider_name = getattr(self.provider, "name", type(self.provider).__name__)
         self._breaker.before_call(provider_name)
 
@@ -96,7 +97,7 @@ class ProviderRouter(Generic[T]):
             retry=retry_if_exception_type(ProviderError),
             reraise=True,
         )
-        async def _attempt() -> T:
+        async def _attempt() -> R:
             return await fn(self.provider)
 
         try:
@@ -133,8 +134,8 @@ class FallbackChain(Generic[T]):
         return [name for name, _ in self._routers]
 
     async def call(
-        self, fn: Callable[[T], Awaitable[T]], *, exclude: set[str] | None = None
-    ) -> T:
+        self, fn: Callable[[T], Awaitable[R]], *, exclude: set[str] | None = None
+    ) -> R:
         exclude = exclude or set()
         last_exc: ProviderError | None = None
         attempted = 0
