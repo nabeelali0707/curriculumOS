@@ -1,0 +1,47 @@
+# Provider routing config. No secrets here — keys come from environment
+# variables (see .env.example). Every entry maps to a concrete class in
+# app/providers/<capability>/.
+#
+# P0 wires exactly one provider per capability, except LLM verification,
+# which MUST differ from LLM generation (04_PROVIDER_STRATEGY.md: this is
+# the product's trust mechanism, not a nicety — a verifier grading its own
+# generation is not a check). Fallback chains beyond that are deferred
+# until the single-provider path is proven, per the README ground rules.
+
+llm:
+  generation:
+    primary: anthropic
+    retry:
+      attempts: 3
+      backoff_seconds: 2
+    circuit_breaker:
+      failure_threshold: 5
+      cooldown_seconds: 60
+  verification:
+    # Must never equal llm.generation.primary.
+    primary: openai
+    retry:
+      attempts: 3
+      backoff_seconds: 2
+    circuit_breaker:
+      failure_threshold: 5
+      cooldown_seconds: 60
+
+embeddings:
+  # Embedding models are not interchangeable mid-request: swapping providers
+  # means rebuilding the index, not per-call failover. One provider for P0.
+  primary: qwen3-embedding-8b
+
+parsing:
+  # Routed by document type/confidence, not a fixed priority list.
+  born_digital_pdf: docling
+  scanned_or_multicolumn: marker
+  low_confidence_fallback: null  # unset until a managed OCR provider is wired
+
+solver:
+  # No live failover — a solver swap is an engineering decision, not a
+  # runtime fallback. Time-boxing degrades to a greedy heuristic.
+  engine: ortools-cp-sat
+  time_limit_seconds: 30  # provisional; 09_RISKS_AND_OPEN_QUESTIONS.md flags
+                           # this as something to set from real usage data,
+                           # not an arbitrary default. Revisit after pilot.
