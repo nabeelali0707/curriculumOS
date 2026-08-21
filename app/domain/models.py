@@ -17,6 +17,10 @@ the commit message that introduces them:
     versions; this table anchors that. The diff itself is computed by
     comparing `scheduled_units` rows across two `plan_version` values at
     query time in app/planning/, not pre-stored — no separate diff table.
+  * `question_spans` / `mark_scheme_entry_spans` — 07_TASK_ROADMAP.md
+    requires the question parser to produce "page attribution", but
+    neither `exam_questions` nor `mark_scheme_entries` has any span
+    reference. See [QuestionSpan] for why these are join tables.
 
 Everything else is a direct translation of the doc's schema, including
 column names.
@@ -210,6 +214,43 @@ class MarkSchemeEntry(UUIDPk, Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     acceptable_terms: Mapped[list[str] | None] = mapped_column(ARRAY(String))
     marks_awarded: Mapped[int | None] = mapped_column(Integer)
+
+
+class QuestionSpan(Base):
+    """Which source spans an exam question was extracted from.
+
+    Not in 03_DATA_MODELS.md §1 — added because 07_TASK_ROADMAP.md requires
+    the question parser to produce "marks and page attribution", and
+    `exam_questions` has no span reference at all. A join table rather than
+    a single FK because one question routinely spans several blocks (stem,
+    parts, figure caption), and rather than a bare `page` int because the
+    README's ground rule is an actual mechanically-checkable span
+    reference, not "source: page 47".
+    """
+
+    __tablename__ = "question_spans"
+
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("exam_questions.id", ondelete="CASCADE"), primary_key=True
+    )
+    source_span_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("source_spans.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class MarkSchemeEntrySpan(Base):
+    """Span attribution for a mark-scheme entry — same rationale as
+    [QuestionSpan], for the mark scheme half of the joint entity.
+    """
+
+    __tablename__ = "mark_scheme_entry_spans"
+
+    mark_scheme_entry_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("mark_scheme_entries.id", ondelete="CASCADE"), primary_key=True
+    )
+    source_span_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("source_spans.id", ondelete="CASCADE"), primary_key=True
+    )
 
 
 class QuestionNodeMapping(UUIDPk, CreatedAtMixin, Base):
