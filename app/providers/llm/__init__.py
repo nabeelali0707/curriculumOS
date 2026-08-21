@@ -4,7 +4,7 @@ from app.config import Settings, get_provider_config, get_settings
 from app.providers.llm.anthropic_provider import AnthropicLLMProvider
 from app.providers.llm.fireworks_provider import FireworksLLMProvider
 from app.providers.llm.groq_provider import GroqLLMProvider
-from app.providers.llm.ollama_provider import OllamaLLMProvider
+from app.providers.llm.ollama_provider import OllamaLLMProvider, OllamaVerifyLLMProvider
 from app.providers.llm.openai_provider import OpenAILLMProvider
 from app.providers.llm.openrouter_provider import OpenRouterLLMProvider
 from app.providers.llm.together_provider import TogetherLLMProvider
@@ -20,6 +20,7 @@ _LLM_PROVIDERS = {
     "together": TogetherLLMProvider,
     "fireworks": FireworksLLMProvider,
     "ollama": OllamaLLMProvider,
+    "ollama_verify": OllamaVerifyLLMProvider,
 }
 
 

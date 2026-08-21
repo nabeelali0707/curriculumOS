@@ -46,8 +46,25 @@ class OpenAICompatibleLLMProvider(LLMProvider):
 
         choice = response.choices[0]
         usage = response.usage
+
+        # An empty completion is a failed call, not a valid answer. It
+        # happens for real: a reasoning model can burn the whole max_tokens
+        # budget on internal thinking and return finish_reason="length"
+        # with no content at all. Passing "" up the stack turns that into a
+        # JSON parse error at the call site, which the generation pipeline
+        # then records as NOT_CHECKED — a provider truncation quietly
+        # becoming an unverifiable claim. Raising instead lets the router
+        # retry and the fallback chain move on.
+        text = choice.message.content or ""
+        if not text.strip():
+            raise ProviderError(
+                f"{self.name}: empty completion from {response.model} "
+                f"(finish_reason={choice.finish_reason!r}) — "
+                "raise max_tokens if this model reasons before answering"
+            )
+
         return LLMResponse(
-            text=choice.message.content or "",
+            text=text,
             model=response.model,
             provider=self.name,
             input_tokens=usage.prompt_tokens if usage else 0,

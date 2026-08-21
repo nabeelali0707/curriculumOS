@@ -32,12 +32,14 @@ from datetime import datetime
 from datetime import time as time_
 from enum import Enum
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     CheckConstraint,
 )
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import (
+    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -119,14 +121,28 @@ def _confidence_column():
     return mapped_column(Float, nullable=False)
 
 
+def _str_enum(enum_cls, name: str) -> SAEnum:
+    """SQLAlchemy's Enum type binds a Python enum by MEMBER NAME
+    ("TEXTBOOK") by default, not `.value` ("textbook"), unless told
+    otherwise. Every enum here is a `str, Enum` mixin whose `.value` is
+    exactly the lowercase label the Postgres enum type was created with
+    (migrations/versions/0001_initial_schema.py) — without
+    values_callable, every insert/update touching any of these columns
+    fails with "invalid input value for enum ...: 'TEXTBOOK'" the moment
+    it hits a real database, which nothing did until this was live-tested.
+    """
+    return SAEnum(enum_cls, name=name, values_callable=lambda obj: [e.value for e in obj])
+
+
 class CurriculumNode(UUIDPk, CreatedAtMixin, Base):
     __tablename__ = "curriculum_nodes"
 
-    node_type: Mapped[NodeType] = mapped_column(SAEnum(NodeType, name="node_type"), nullable=False)
+    node_type: Mapped[NodeType] = mapped_column(_str_enum(NodeType, "node_type"), nullable=False)
     label: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     syllabus_ref: Mapped[str | None] = mapped_column(String, index=True)  # e.g. "BIO.ENZ.03"
-    origin: Mapped[Origin] = mapped_column(SAEnum(Origin, name="origin"), nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    origin: Mapped[Origin] = mapped_column(_str_enum(Origin, "origin"), nullable=False)
     confidence: Mapped[float] = _confidence_column()
 
     __table_args__ = (
@@ -143,9 +159,9 @@ class CurriculumEdge(UUIDPk, Base):
     target_node_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("curriculum_nodes.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    edge_type: Mapped[EdgeType] = mapped_column(SAEnum(EdgeType, name="edge_type"), nullable=False)
+    edge_type: Mapped[EdgeType] = mapped_column(_str_enum(EdgeType, "edge_type"), nullable=False)
     confidence: Mapped[float] = _confidence_column()
-    origin: Mapped[Origin] = mapped_column(SAEnum(Origin, name="origin"), nullable=False)
+    origin: Mapped[Origin] = mapped_column(_str_enum(Origin, "origin"), nullable=False)
     # Nullable per 03_DATA_MODELS.md — but only 'official'/'teacher_defined'
     # edges may legitimately lack provenance; anything machine_* must set
     # this. Enforced in app/domain code, not a DB constraint, since it's a
@@ -163,9 +179,13 @@ class SourceDocument(UUIDPk, Base):
     __tablename__ = "source_documents"
 
     title: Mapped[str] = mapped_column(String, nullable=False)
-    doc_type: Mapped[DocType] = mapped_column(SAEnum(DocType, name="doc_type"), nullable=False)
+    doc_type: Mapped[DocType] = mapped_column(_str_enum(DocType, "doc_type"), nullable=False)
     file_path: Mapped[str] = mapped_column(String, nullable=False)
-    ingested_at: Mapped[datetime | None] = mapped_column()
+    # timezone=True to match the migration's TIMESTAMPTZ column — a bare
+    # mapped_column() infers a naive TIMESTAMP from the `datetime`
+    # annotation, which asyncpg then rejects outright when the ingestion
+    # service passes it a tz-aware datetime.now(timezone.utc).
+    ingested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     parser_used: Mapped[str | None] = mapped_column(String)
     parser_confidence: Mapped[float | None] = mapped_column(Float)
 
@@ -270,7 +290,7 @@ class QuestionNodeMapping(UUIDPk, CreatedAtMixin, Base):
     weight: Mapped[float] = mapped_column(Float, nullable=False)
     confidence: Mapped[float] = _confidence_column()
     mapping_method: Mapped[MappingMethod] = mapped_column(
-        SAEnum(MappingMethod, name="mapping_method"), nullable=False
+        _str_enum(MappingMethod, "mapping_method"), nullable=False
     )
     corrected_by: Mapped[str | None] = mapped_column(String)  # teacher id, nullable
 
@@ -314,7 +334,7 @@ class CalendarDay(UUIDPk, Base):
         ForeignKey("academic_calendars.id", ondelete="CASCADE"), nullable=False, index=True
     )
     date: Mapped[date_] = mapped_column(nullable=False)
-    day_type: Mapped[DayType] = mapped_column(SAEnum(DayType, name="day_type"), nullable=False)
+    day_type: Mapped[DayType] = mapped_column(_str_enum(DayType, "day_type"), nullable=False)
 
     __table_args__ = (UniqueConstraint("calendar_id", "date", name="uq_calendar_day"),)
 
@@ -372,7 +392,7 @@ class ScheduledUnit(UUIDPk, Base):
     )
     scheduled_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[ScheduledUnitStatus] = mapped_column(
-        SAEnum(ScheduledUnitStatus, name="scheduled_unit_status"), nullable=False
+        _str_enum(ScheduledUnitStatus, "scheduled_unit_status"), nullable=False
     )
     plan_version: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("plan_versions.id", ondelete="CASCADE"), nullable=False, index=True
@@ -407,7 +427,7 @@ class ClassMasterySignal(UUIDPk, CreatedAtMixin, Base):
         ForeignKey("curriculum_nodes.id", ondelete="CASCADE"), nullable=False, index=True
     )
     status: Mapped[MasteryStatus] = mapped_column(
-        SAEnum(MasteryStatus, name="mastery_status"), nullable=False
+        _str_enum(MasteryStatus, "mastery_status"), nullable=False
     )
     marked_by: Mapped[str] = mapped_column(String, nullable=False)  # teacher id
 
@@ -430,7 +450,7 @@ class Claim(UUIDPk, CreatedAtMixin, Base):
     generation_model: Mapped[str] = mapped_column(String, nullable=False)
     verification_model: Mapped[str] = mapped_column(String, nullable=False)
     verification_status: Mapped[VerificationStatus] = mapped_column(
-        SAEnum(VerificationStatus, name="verification_status"), nullable=False
+        _str_enum(VerificationStatus, "verification_status"), nullable=False
     )
     confidence: Mapped[float] = _confidence_column()
 

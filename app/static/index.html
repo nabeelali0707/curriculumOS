@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CurriculumOS</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #f7fafd;
+    --panel-2: #eef4fb;
+    --border: #e3eaf3;
+    --accent: #2f6fed;
+    --accent-soft: #e9f0ff;
+    --text: #14213d;
+    --muted: #667085;
+    --ok: #12805c;
+    --ok-soft: #e6f6f0;
+    --warn: #a86a00;
+    --warn-soft: #fdf3e2;
+    --err: #c02626;
+    --err-soft: #fdecec;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  a { color: var(--accent); }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 1.15rem; letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: .82rem; margin-top: .1rem; }
+  .status-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+
+  .layout { display: grid; grid-template-columns: 250px 1fr; min-height: calc(100vh - 66px); }
+  nav {
+    border-right: 1px solid var(--border); padding: 1rem .75rem;
+    background: var(--panel); position: sticky; top: 66px; height: calc(100vh - 66px);
+    overflow-y: auto;
+  }
+  nav button {
+    display: block; width: 100%; text-align: left; margin: 0 0 .2rem;
+    background: none; border: none; border-radius: 7px;
+    padding: .5rem .6rem; font: inherit; font-size: .87rem; color: var(--text);
+    cursor: pointer; display: flex; align-items: center; gap: .55rem;
+  }
+  nav button:hover { background: var(--panel-2); }
+  nav button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  nav .num {
+    flex: 0 0 1.35rem; height: 1.35rem; border-radius: 999px;
+    background: #fff; border: 1px solid var(--border);
+    display: grid; place-items: center; font-size: .72rem; color: var(--muted);
+  }
+  nav button.active .num { border-color: var(--accent); color: var(--accent); }
+  nav button.done .num { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+  nav .group-label {
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin: 1rem .6rem .4rem;
+  }
+
+  main { padding: 1.5rem 1.75rem 4rem; max-width: 980px; }
+  .step { display: none; }
+  .step.active { display: block; }
+  .step > h2 { margin: 0 0 .25rem; font-size: 1.3rem; letter-spacing: -0.01em; }
+  .step > .lede { color: var(--muted); margin: 0 0 1.25rem; font-size: .92rem; max-width: 68ch; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.1rem; margin-bottom: 1rem;
+  }
+  .card h3 { margin: 0 0 .2rem; font-size: .97rem; }
+  .card .hint { color: var(--muted); font-size: .84rem; margin: 0 0 .8rem; }
+
+  label { display: block; font-size: .8rem; color: var(--muted); margin: .6rem 0 .2rem; }
+  input, select, textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 7px;
+    padding: .5rem .6rem; font: inherit; font-size: .88rem; background: #fff; color: var(--text);
+  }
+  textarea { resize: vertical; }
+  .row { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .row > * { flex: 1 1 160px; }
+
+  button.act {
+    margin-top: .85rem; background: var(--accent); color: #fff; border: none;
+    border-radius: 7px; padding: .5rem 1rem; font: inherit; font-size: .87rem;
+    font-weight: 500; cursor: pointer;
+  }
+  button.act:hover { filter: brightness(1.06); }
+  button.act:disabled { opacity: .55; cursor: default; filter: none; }
+  button.act.ghost { background: #fff; color: var(--accent); border: 1px solid var(--border); }
+  button.act.sm { padding: .3rem .6rem; font-size: .78rem; margin-top: 0; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .2rem .55rem; border-radius: 999px; background: #fff;
+    border: 1px solid var(--border); font-size: .75rem; white-space: nowrap;
+  }
+  .badge.ok { background: var(--ok-soft); border-color: #bfe5d7; color: var(--ok); }
+  .badge.warn { background: var(--warn-soft); border-color: #f0dcb4; color: var(--warn); }
+  .badge.err { background: var(--err-soft); border-color: #f3cccc; color: var(--err); }
+  .badge.info { background: var(--accent-soft); border-color: #cfe0ff; color: var(--accent); }
+  .dot { width: .5rem; height: .5rem; border-radius: 999px; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.err { background: var(--err); }
+
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: .6rem; }
+  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+  tbody tr:hover { background: #fff; }
+  .table-wrap { overflow-x: auto; }
+  code {
+    background: var(--accent-soft); color: var(--text);
+    padding: .08rem .32rem; border-radius: 4px; font-size: .82em;
+  }
+  pre {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: .7rem; white-space: pre-wrap; word-break: break-word;
+    font-size: .8rem; margin: .7rem 0 0; max-height: 340px; overflow: auto;
+  }
+  .out { margin-top: .8rem; }
+  .empty { color: var(--muted); font-size: .85rem; font-style: italic; padding: .5rem 0; }
+  .spin { display: inline-block; width: .8rem; height: .8rem; border: 2px solid var(--accent-soft);
+    border-top-color: var(--accent); border-radius: 50%; animation: s .7s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .6rem; }
+  .kpi { flex: 1 1 120px; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: .7rem .85rem; }
+  .kpi .v { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
+  .kpi .l { font-size: .75rem; color: var(--muted); }
+  .kpi.ok .v { color: var(--ok); } .kpi.warn .v { color: var(--warn); }
+  .bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; min-width: 60px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>CurriculumOS</h1>
+    <div class="sub">Grounded, citable term planning &mdash; teacher workspace</div>
+  </div>
+  <div class="status-row">
+    <span class="badge"><span class="dot" id="dot-api"></span> API</span>
+    <span class="badge"><span class="dot" id="dot-db"></span> Database</span>
+    <a class="badge" href="/docs" target="_blank">API docs</a>
+  </div>
+</header>
+
+<div class="layout">
+  <nav id="nav">
+    <div class="group-label">Sources</div>
+    <button data-step="upload"><span class="num">1</span> Upload documents</button>
+    <button data-step="curriculum"><span class="num">2</span> Extract curriculum</button>
+    <button data-step="questions"><span class="num">3</span> Parse questions</button>
+    <div class="group-label">Analysis</div>
+    <button data-step="mapping"><span class="num">4</span> Map to objectives</button>
+    <button data-step="corrections"><span class="num">5</span> Teacher corrections</button>
+    <button data-step="emphasis"><span class="num">6</span> Emphasis scoring</button>
+    <div class="group-label">Planning</div>
+    <button data-step="calendar"><span class="num">7</span> Calendar &amp; timetable</button>
+    <button data-step="plan"><span class="num">8</span> Build term plan</button>
+    <button data-step="replan"><span class="num">9</span> Disruption &amp; replan</button>
+    <div class="group-label">Output</div>
+    <button data-step="generation"><span class="num">10</span> Grounded generation</button>
+  </nav>
+
+  <main>
+    <!-- 1 UPLOAD -->
+    <section class="step" id="step-upload">
+      <h2>1 &middot; Upload source documents</h2>
+      <p class="lede">Each file is parsed into structured blocks with page and bounding box, then stored as
+        <code>source_spans</code>. Everything downstream cites a span, never a raw file &mdash; that's what makes
+        &ldquo;verify this claim&rdquo; a database query instead of a re-reading exercise.</p>
+
+      <div class="card">
+        <h3>Upload &amp; parse</h3>
+        <p class="hint">Parser chain, cheapest correct parser first: <code>pypdf_text</code> (real page numbers)
+          &rarr; <code>anydoc</code> (Rust, no ML model &mdash; office formats) &rarr; <code>vision_llm_ocr</code>
+          (scanned pages, via a multimodal LLM). No parser in this chain downloads a model.</p>
+        <div class="row">
+          <div><label>Title</label><input id="up-title" placeholder="Sindh Board Physics XI"></div>
+          <div><label>Document type</label>
+            <select id="up-type">
+              <option value="syllabus">syllabus</option>
+              <option value="textbook">textbook</option>
+              <option value="past_paper">past_paper</option>
+              <option value="mark_scheme">mark_scheme</option>
+              <option value="calendar">calendar</option>
+            </select>
+          </div>
+        </div>
+        <label>File</label><input type="file" id="up-file">
+        <button class="act" id="btn-upload">Upload &amp; parse</button>
+        <div class="out" id="out-upload"></div>
+      </div>
+
+      <div class="card">
+        <h3>Ingested documents</h3>
+        <p class="hint">Loaded from the database &mdash; already-parsed documents survive a page reload, so a demo
+          never has to re-run a parse.</p>
+        <button class="act ghost sm" onclick="loadDocuments()">Refresh</button>
+        <div class="out" id="out-docs"></div>
+      </div>
+    </section>
+
+    <!-- 2 CURRICULUM -->
+    <section class="step" id="step-curriculum">
+      <h2>2 &middot; Extract curriculum structure</h2>
+      <p class="lede">An LLM proposes topics, subtopics, objectives and prerequisite edges from the syllabus text.
+        Every node lands tagged <code>machine_extracted</code> with confidence below 1.0 &mdash; a machine-inferred
+        prerequisite must never look as authoritative as one stated in the official syllabus.</p>
+
+      <div class="card">
+        <h3>Extract from a document</h3>
+        <div class="row">
+          <div><label>Source document</label><select id="cur-doc"></select></div>
+        </div>
+        <button class="act" id="btn-extract">Extract curriculum</button>
+        <div class="out" id="out-extract"></div>
+      </div>
+
+      <div class="card">
+        <h3>Curriculum graph</h3>
+        <button class="act ghost sm" onclick="loadNodes()">Refresh</button>
+        <div class="out" id="out-nodes"></div>
+      </div>
+    </section>
+
+    <!-- 3 QUESTIONS -->
+    <section class="step" id="step-questions">
+      <h2>3 &middot; Parse questions &amp; mark schemes</h2>
+      <p class="lede">Exam questions and their mark-scheme entries are extracted as one linked entity, with marks and
+        span-level page attribution on both halves. The unmatched counts are the parser's honesty signal.</p>
+
+      <div class="card">
+        <h3>Parse a past paper</h3>
+        <div class="row">
+          <div><label>Past paper document</label><select id="q-doc"></select></div>
+          <div><label>Mark scheme (optional)</label><select id="q-ms"><option value="">&mdash; none &mdash;</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>Year</label><input id="q-year" type="number" placeholder="2024"></div>
+          <div><label>Paper ref</label><input id="q-ref" placeholder="p2"></div>
+        </div>
+        <button class="act" id="btn-questions">Parse questions</button>
+        <div class="out" id="out-qparse"></div>
+      </div>
+
+      <div class="card">
+        <h3>Extracted questions</h3>
+        <button class="act ghost sm" onclick="loadQuestions()">Refresh</button>
+        <div class="out" id="out-questions"></div>
+      </div>
+    </section>
+
+    <!-- 4 MAPPING -->
+    <section class="step" id="step-mapping">
+      <h2>4 &middot; Map questions to objectives</h2>
+      <p class="lede">An ensemble &mdash; embedding similarity, lexical retrieval, syllabus terminology and LLM
+        classification &mdash; produces <em>multi-label weighted</em> mappings with confidence, not single-label
+        classification. One question can legitimately assess several objectives.</p>
+
+      <div class="card">
+        <h3>Run the ensemble mapper</h3>
+        <div class="row">
+          <div><label>Question</label><select id="map-q"></select></div>
+          <div><label>Min confidence</label><input id="map-conf" type="number" step="0.05" value="0.2"></div>
+        </div>
+        <button class="act" id="btn-map">Map question</button>
+        <div class="out" id="out-map"></div>
+      </div>
+
+      <div class="card">
+        <h3>Existing mappings</h3>
+        <p class="hint">Select a question above and refresh to see what's already stored.</p>
+        <button class="act ghost sm" onclick="loadMappings()">Refresh</button>
+        <div class="out" id="out-mappings"></div>
+      </div>
+    </section>
+
+    <!-- 5 CORRECTIONS -->
+    <section class="step" id="step-corrections">
+      <h2>5 &middot; Teacher corrections</h2>
+      <p class="lede">A correction is logged verbatim to <code>teacher_corrections</code> and, for a mapping, also
+        overwrites the live row: confidence pinned to 1.0, method set to <code>human_corrected</code>. This history
+        is the compounding asset &mdash; the one signal the ensemble always trusts.</p>
+
+      <div class="card">
+        <h3>Correct a mapping weight</h3>
+        <p class="hint">Pick a question in step 4 first, then refresh here to load its mappings.</p>
+        <button class="act ghost sm" onclick="loadCorrectable()">Load mappings</button>
+        <div class="out" id="out-correctable"></div>
+      </div>
+    </section>
+
+    <!-- 6 EMPHASIS -->
+    <section class="step" id="step-emphasis">
+      <h2>6 &middot; Historical assessment emphasis</h2>
+      <p class="lede">A weighted score per objective &mdash; frequency, recency decay, marks, syllabus weighting and
+        structural similarity &mdash; not raw frequency counting. This is what tells the solver which objectives
+        actually earn teaching time.</p>
+
+      <div class="card">
+        <h3>Compute emphasis scores</h3>
+        <div class="row"><div><label>Current year (optional)</label><input id="emph-year" type="number" placeholder="2025"></div></div>
+        <button class="act" id="btn-emphasis">Compute scores</button>
+        <div class="out" id="out-emphasis"></div>
+      </div>
+    </section>
+
+    <!-- 7 CALENDAR -->
+    <section class="step" id="step-calendar">
+      <h2>7 &middot; Calendar &amp; timetable</h2>
+      <p class="lede">The calendar is modelled as available instructional <em>capacity</em>, not a flat list of dates.
+        A school day is not a slot &mdash; the solver needs derived available minutes per subject, class and date.</p>
+
+      <div class="card">
+        <h3>Create an academic calendar</h3>
+        <div class="row">
+          <div><label>School id</label><input id="cal-school" value="pilot-school"></div>
+          <div><label>Term start</label><input id="cal-start" type="date"></div>
+          <div><label>Term end</label><input id="cal-end" type="date"></div>
+        </div>
+        <label>Non-teaching dates (comma separated, optional)</label>
+        <input id="cal-off" placeholder="2026-03-23, 2026-03-24">
+        <button class="act" id="btn-calendar">Create calendar</button>
+        <div class="out" id="out-calendar"></div>
+      </div>
+
+      <div class="card">
+        <h3>Add weekly timetable slots</h3>
+        <p class="hint">Each slot is expanded across every matching school day in the term.</p>
+        <div class="row">
+          <div><label>Calendar</label><select id="win-cal"></select></div>
+          <div><label>Subject</label><input id="win-subject" value="Physics"></div>
+          <div><label>Class</label><input id="win-class" value="XI-A"></div>
+        </div>
+        <div class="row">
+          <div><label>Weekday</label>
+            <select id="win-day">
+              <option value="0">Monday</option><option value="1">Tuesday</option>
+              <option value="2">Wednesday</option><option value="3">Thursday</option>
+              <option value="4">Friday</option>
+            </select>
+          </div>
+          <div><label>Start</label><input id="win-start" type="time" value="09:00"></div>
+          <div><label>End</label><input id="win-end" type="time" value="10:00"></div>
+        </div>
+        <button class="act" id="btn-windows">Add slots</button>
+        <div class="out" id="out-windows"></div>
+      </div>
+    </section>
+
+    <!-- 8 PLAN -->
+    <section class="step" id="step-plan">
+      <h2>8 &middot; Build the term plan</h2>
+      <p class="lede">The solver places lightweight <em>teaching units</em> onto calendar capacity under hard
+        constraints &mdash; prerequisite order, non-teaching days, window capacity. Lesson content is generated only
+        after a unit has a slot, never speculatively.</p>
+
+      <div class="card">
+        <h3>Create teaching units</h3>
+        <p class="hint">One unit per objective, priority seeded from emphasis scores where available.</p>
+        <div class="row"><div><label>Default duration (minutes)</label><input id="tu-dur" type="number" value="60"></div></div>
+        <button class="act" id="btn-units">Create units for all objectives</button>
+        <div class="out" id="out-units"></div>
+      </div>
+
+      <div class="card">
+        <h3>Solve</h3>
+        <div class="row">
+          <div><label>Calendar</label><select id="plan-cal"></select></div>
+          <div><label>Subject</label><input id="plan-subject" value="Physics"></div>
+          <div><label>Class</label><input id="plan-class" value="XI-A"></div>
+        </div>
+        <button class="act" id="btn-plan">Build plan</button>
+        <div class="out" id="out-plan"></div>
+      </div>
+    </section>
+
+    <!-- 9 REPLAN -->
+    <section class="step" id="step-replan">
+      <h2>9 &middot; Disruption &amp; replan</h2>
+      <p class="lede">The point of a good replan is how little it disturbs, not how clever the rearrangement is.
+        Churn against the previous plan is a first-class objective in the solver, not a post-hoc report.</p>
+
+      <div class="card">
+        <h3>Mark a day unavailable</h3>
+        <div class="row">
+          <div><label>Calendar</label><select id="dis-cal"></select></div>
+          <div><label>Date</label><input id="dis-date" type="date"></div>
+        </div>
+        <button class="act" id="btn-disrupt">School closed &mdash; disrupt this day</button>
+        <div class="out" id="out-disrupt"></div>
+      </div>
+
+      <div class="card">
+        <h3>Replan</h3>
+        <p class="hint">Re-solves against the previous plan version so churn is measured, not assumed.</p>
+        <button class="act" id="btn-replan">Replan &amp; show what changed</button>
+        <div class="out" id="out-replan"></div>
+      </div>
+    </section>
+
+    <!-- 10 GENERATION -->
+    <section class="step" id="step-generation">
+      <h2>10 &middot; Grounded generation</h2>
+      <p class="lede">Verify-then-render, not generate-then-cite: retrieve evidence &rarr; generate structured claims
+        &rarr; verify each claim against its cited spans with a <em>different</em> model &rarr; reject the unsupported.
+        A claim is never stored as verified unless the verification chain actually said so.</p>
+
+      <div class="card">
+        <h3>Generate a lesson</h3>
+        <div class="row"><div><label>Scheduled unit</label><select id="gen-unit"></select></div></div>
+        <button class="act" id="btn-lesson">Generate lesson claims</button>
+        <div class="out" id="out-lesson"></div>
+      </div>
+
+      <div class="card">
+        <h3>Generate practice questions</h3>
+        <div class="row">
+          <div><label>Objective</label><select id="gen-node"></select></div>
+          <div><label>Count</label><input id="gen-count" type="number" value="3"></div>
+        </div>
+        <button class="act" id="btn-assess">Generate assessment</button>
+        <div class="out" id="out-assess"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// ---------- tiny helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct = v => (v * 100).toFixed(0) + '%';
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  const body = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(body?.detail ? JSON.stringify(body.detail) : `HTTP ${r.status}`);
+  return body;
+}
+function busy(el, msg = 'Working') { el.innerHTML = `<span class="spin"></span> <span class="badge">${esc(msg)}&hellip;</span>`; }
+function fail(el, e) { el.innerHTML = `<span class="badge err">Failed</span><pre>${esc(e.message)}</pre>`; }
+function note(el, msg, kind = 'ok') { el.innerHTML = `<span class="badge ${kind}">${esc(msg)}</span>`; }
+
+function table(rows, cols) {
+  if (!rows.length) return '<div class="empty">Nothing here yet.</div>';
+  const head = cols.map(c => `<th>${esc(c.h)}</th>`).join('');
+  const body = rows.map(r => '<tr>' + cols.map(c => `<td>${c.f(r)}</td>`).join('') + '</tr>').join('');
+  return `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function confBadge(v) {
+  const k = v >= 0.75 ? 'ok' : v >= 0.4 ? 'warn' : 'err';
+  return `<span class="badge ${k}">${pct(v)}</span>`;
+}
+function fillSelect(sel, items, label, keep = true) {
+  const prev = keep ? sel.value : null;
+  sel.innerHTML = items.map(i => `<option value="${i.id}">${esc(label(i))}</option>`).join('');
+  if (prev && items.some(i => i.id === prev)) sel.value = prev;
+}
+
+// shared demo state, so later steps know what earlier ones produced
+const S = {
+  get planVersion() { return localStorage.getItem('cos.plan') || null; },
+  set planVersion(v) { localStorage.setItem('cos.plan', v); },
+  get question() { return localStorage.getItem('cos.q') || null; },
+  set question(v) { localStorage.setItem('cos.q', v); },
+};
+
+// ---------- navigation ----------
+document.querySelectorAll('#nav button').forEach(btn => {
+  btn.onclick = () => show(btn.dataset.step);
+});
+function show(name) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.step === name));
+  $('step-' + name).classList.add('active');
+  location.hash = name;
+  (REFRESH[name] || (() => {}))();
+}
+
+// ---------- status ----------
+async function checkStatus() {
+  for (const [path, id] of [['/health', 'dot-api'], ['/health/db', 'dot-db']]) {
+    try { $(id).classList.add((await fetch(path)).ok ? 'ok' : 'err'); }
+    catch { $(id).classList.add('err'); }
+  }
+}
+
+// ---------- 1 documents ----------
+let DOCS = [];
+async function loadDocuments() {
+  const el = $('out-docs');
+  try {
+    DOCS = await api('/documents');
+    el.innerHTML = table(DOCS, [
+      { h: 'Title', f: d => esc(d.title) },
+      { h: 'Type', f: d => `<span class="badge info">${esc(d.doc_type)}</span>` },
+      { h: 'Parser', f: d => `<code>${esc(d.parser_used || '—')}</code>` },
+      { h: 'Spans', f: d => d.span_count },
+    ]);
+    const docOpts = d => `${d.title} (${d.doc_type})`;
+    fillSelect($('cur-doc'), DOCS, docOpts);
+    fillSelect($('q-doc'), DOCS.filter(d => d.doc_type === 'past_paper'), docOpts);
+    const ms = DOCS.filter(d => d.doc_type === 'mark_scheme');
+    $('q-ms').innerHTML = '<option value="">— none —</option>' +
+      ms.map(d => `<option value="${d.id}">${esc(docOpts(d))}</option>`).join('');
+  } catch (e) { fail(el, e); }
+}
+
+$('btn-upload').onclick = async () => {
+  const el = $('out-upload'), f = $('up-file').files[0];
+  if (!f) return note(el, 'Choose a file first', 'warn');
+  busy(el, 'Parsing (scanned PDFs go page-by-page through OCR, this can take a while)');
+  const fd = new FormData();
+  fd.append('title', $('up-title').value || f.name);
+  fd.append('doc_type', $('up-type').value);
+  fd.append('file', f);
+  try {
+    const d = await api('/ingestion/documents', { method: 'POST', body: fd });
+    el.innerHTML = `<span class="badge ok">Parsed</span>
+      <div class="kpi-row">
+        <div class="kpi"><div class="v">${d.span_count}</div><div class="l">spans stored</div></div>
+        <div class="kpi"><div class="v">${d.parser_confidence == null ? '—' : pct(d.parser_confidence)}</div><div class="l">parser confidence</div></div>
+        <div class="kpi"><div class="v" style="font-size:1rem">${esc(d.parser_used || '—')}</div><div class="l">parser used</div></div>
+      </div>`;
+    await loadDocuments();
+  } catch (e) { fail(el, e); }
+};
+
+// ---------- 2 curriculum ----------
+let NODES = [];
+async function loadNodes() {
+  const el = $('out-nodes');
+  try {
+    NODES = await api('/curriculum-nodes');
+    const edges = await api('/curriculum-edges');
+    const prereq = edges.filter(e => e.edge_type === 'prerequisite').length;
+    el.innerHTML = `<div class="kpi-row">
+        <div class="kpi"><div class="v">${NODES.length}</div><div class="l">nodes</div></div>
+        <div class="kpi"><div class="v">${edges.length}</div><div class="l">edges</div></div>
+        <div class="kpi"><div class="v">${prereq}</div><div class="l">prerequisites</div></div>
+      </div>` + table(NODES, [
+      { h: 'Ref', f: n => `<code>${esc(n.syllabus_ref || '—')}</code>` },
+      { h: 'Type', f: n => `<span class="badge info">${esc(n.node_type)}</span>` },
+      { h: 'Label', f: n => esc(n.label) },
+      { h: 'Origin', f: n => `<span class="badge">${esc(n.origin)}</span>` },
+      { h: 'Confidence', f: n => confBadge(n.confidence) },
+    ]);
+    fillSelect($('gen-node'), NODES, n => `${n.syllabus_ref || ''} ${n.label}`.trim());
+  } catch (e) { fail(el, e); }
+}
+
+$('btn-extract').onclick = async () => {
+  const el = $('out-extract'), id = $('cur-doc').value;
+  if (!id) return note(el, 'Upload a syllabus first', 'warn');
+  busy(el, 'Asking the LLM to extract the curriculum structure');
+  try {
+    const nodes = await api(`/ingestion/documents/${id}/curriculum`, { method: 'POST' });
+    el.innerHTML = `<span class="badge ok">Extracted ${nodes.length} nodes</span>
+      <span class="badge"><span class="spin"></span> embedding for retrieval&hellip;</span>`;
+    // The mapper's shortlist only sees embedded nodes, so this has to
+    // happen before step 4 can auto-shortlist candidates.
+    let embedded = 0;
+    try {
+      embedded = (await api('/ingestion/curriculum/embeddings', { method: 'POST' })).nodes_embedded;
+    } catch (e) {
+      el.innerHTML = `<span class="badge ok">Extracted ${nodes.length} nodes</span>
+        <span class="badge warn">embedding unavailable — mapping will need explicit candidates</span>`;
+    }
+    if (embedded) note(el, `Extracted ${nodes.length} nodes, embedded ${embedded}`);
+    await loadNodes();
+  } catch (e) { fail(el, e); }
+};
+
+// ---------- 3 questions ----------
+let QUESTIONS = [];
+async function loadQuestions() {
+  const el = $('out-questions');
+  try {
+    QUESTIONS = await api('/questions');
+    el.innerHTML = table(QUESTIONS, [
+      { h: 'Ref', f: q => `<code>${esc(q.question_ref)}</code>` },
+      { h: 'Question', f: q => esc(q.text) },
+      { h: 'Marks', f: q => q.marks ?? '—' },
+    ]);
+    fillSelect($('map-q'), QUESTIONS, q => `${q.question_ref} — ${q.text.slice(0, 60)}`);
+    if (S.question) $('map-q').value = S.question;
+  } catch (e) { fail(el, e); }
+}
+
+$('btn-questions').onclick = async () => {
+  const el = $('out-qparse'), id = $('q-doc').value;
+  if (!id) return note(el, 'Upload a past paper first', 'warn');
+  busy(el, 'Parsing questions');
+  try {
+    const r = await api(`/ingestion/documents/${id}/questions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mark_scheme_document_id: $('q-ms').value || null,
+        year: $('q-year').value ? +$('q-year').value : null,
+        paper_ref: $('q-ref').value || null,
+      }),
+    });
+    el.innerHTML = `<div class="kpi-row">
+      <div class="kpi ok"><div class="v">${r.questions_created}</div><div class="l">questions</div></div>
+      <div class="kpi ok"><div class="v">${r.mark_scheme_entries_created}</div><div class="l">mark scheme entries</div></div>
+      <div class="kpi warn"><div class="v">${r.questions_without_mark_scheme.length}</div><div class="l">questions unmatched</div></div>
+      <div class="kpi warn"><div class="v">${r.mark_scheme_entries_without_question.length}</div><div class="l">entries orphaned</div></div>
+    </div><p class="hint" style="margin-top:.6rem">Unmatched counts are the parser's honesty signal, not hidden failure.</p>`;
+    await loadQuestions();
+  } catch (e) { fail(el, e); }
+};
+
+// ---------- 4 mapping ----------
+async function loadMappings() {
+  const el = $('out-mappings'), qid = $('map-q').value;
+  if (!qid) return el.innerHTML = '<div class="empty">No question selected.</div>';
+  try {
+    const ms = await api(`/questions/${qid}/mappings`);
+    el.innerHTML = renderMappings(ms);
+  } catch (e) { fail(el, e); }
+}
+function renderMappings(ms) {
+  return table(ms, [
+    { h: 'Objective', f: m => esc(m.node_label) },
+    { h: 'Weight', f: m => `<div class="bar"><i style="width:${m.weight * 100}%"></i></div> ${m.weight.toFixed(2)}` },
+    { h: 'Confidence', f: m => confBadge(m.confidence) },
+    { h: 'Method', f: m => `<span class="badge ${m.mapping_method === 'human_corrected' ? 'ok' : ''}">${esc(m.mapping_method)}</span>` },
+  ]);
+}
+$('map-q').onchange = () => { S.question = $('map-q').value; loadMappings(); };
+
+$('btn-map').onclick = async () => {
+  const el = $('out-map'), qid = $('map-q').value;
+  if (!qid) return note(el, 'Parse some questions first', 'warn');
+  S.question = qid;
+  busy(el, 'Running the ensemble (embedding + lexical + terminology + LLM)');
+  try {
+    const ms = await api(`/mappings/questions/${qid}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ min_confidence: +$('map-conf').value }),
+    });
+    el.innerHTML = `<span class="badge ok">${ms.length} mapping(s)</span>` + renderMappings(
+      ms.map(m => ({ ...m, node_label: (NODES.find(n => n.id === m.node_id) || {}).label || m.node_id }))
+    );
+    await loadMappings();
+  } catch (e) { fail(el, e); }
+};
+
+// ---------- 5 corrections ----------
+async function loadCorrectable() {
+  const el = $('out-correctable'), qid = S.question || $('map-q').value;
+  if (!qid) return el.innerHTML = '<div class="empty">Pick a question in step 4 first.</div>';
+  try {
+    const ms = await api(`/questions/${qid}/mappings`);
+    if (!ms.length) return el.innerHTML = '<div class="empty">No mappings on that question yet.</div>';
+    el.innerHTML = table(ms, [
+      { h: 'Objective', f: m => esc(m.node_label) },
+      { h: 'Current weight', f: m => m.weight.toFixed(2) },
+      { h: 'Method', f: m => `<span class="badge ${m.mapping_method === 'human_corrected' ? 'ok' : ''}">${esc(m.mapping_method)}</span>` },
+      { h: 'Corrected weight', f: m => `<input style="width:90px" type="number" step="0.05" min="0" max="1" value="${m.weight.toFixed(2)}" id="cw-${m.id}">` },
+      { h: '', f: m => `<button class="act sm" onclick="correct('${m.id}', ${m.weight})">Save</button>` },
+    ]);
+  } catch (e) { fail(el, e); }
+}
+async function correct(id, before) {
+  const el = $('out-correctable'), after = +$('cw-' + id).value;
+  try {
+    await api('/corrections/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entity_type: 'question_node_mapping', entity_id: id,
+        before_value: { weight: before }, after_value: { weight: after },
+        teacher_id: 'demo-teacher',
+      }),
+    });
+    await loadCorrectable();
+    el.insertAdjacentHTML('afterbegin',
+      '<span class="badge ok">Correction logged &mdash; confidence pinned to 100%, method now human_corrected</span>');
+  } catch (e) { fail(el, e); }
+}
+
+// ---------- 6 emphasis ----------
+$('btn-emphasis').onclick = async () => {
+  const el = $('out-emphasis');
+  busy(el, 'Scoring');
+  try {
+    const y = $('emph-year').value;
+    const rows = await api('/emphasis/' + (y ? `?current_year=${y}` : ''));
+    if (!rows.length) return el.innerHTML = '<div class="empty">No mapped questions yet — emphasis needs mappings from step 4.</div>';
+    rows.sort((a, b) => b.score - a.score);
+    const byId = Object.fromEntries(NODES.map(n => [n.id, n.label]));
+    el.innerHTML = table(rows, [
+      { h: 'Objective', f: r => esc(byId[r.node_id] || r.node_id) },
+      { h: 'Score', f: r => `<div class="bar"><i style="width:${Math.min(r.score, 1) * 100}%"></i></div> ${r.score.toFixed(3)}` },
+      { h: 'Freq', f: r => r.frequency.toFixed(2) },
+      { h: 'Recency', f: r => r.recency.toFixed(2) },
+      { h: 'Marks', f: r => r.marks.toFixed(2) },
+      { h: 'Syllabus', f: r => r.syllabus.toFixed(2) },
+      { h: 'Structural', f: r => r.structural.toFixed(2) },
+    ]);
+    EMPHASIS = Object.fromEntries(rows.map(r => [r.node_id, r.score]));
+  } catch (e) { fail(el, e); }
+};
+let EMPHASIS = {};
+
+// ---------- 7 calendar ----------
+let CALS = [];
+async function loadCalendars() {
+  try {
+    CALS = await api('/calendars/');
+    const label = c => `${c.school_id} · ${c.term_start} → ${c.term_end} (${c.day_count}d)`;
+    ['win-cal', 'plan-cal', 'dis-cal'].forEach(id => fillSelect($(id), CALS, label));
+  } catch (e) { /* status badge already reports DB trouble */ }
+}
+$('btn-calendar').onclick = async () => {
+  const el = $('out-calendar');
+  if (!$('cal-start').value || !$('cal-end').value) return note(el, 'Pick term start and end', 'warn');
+  busy(el, 'Creating');
+  try {
+    const c = await api('/calendars/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        school_id: $('cal-school').value, term_start: $('cal-start').value, term_end: $('cal-end').value,
+        non_teaching_dates: $('cal-off').value.split(',').map(s => s.trim()).filter(Boolean),
+      }),
+    });
+    note(el, `Calendar created — ${c.day_count} days modelled`);
+    await loadCalendars();
+  } catch (e) { fail(el, e); }
+};
+$('btn-windows').onclick = async () => {
+  const el = $('out-windows'), cal = $('win-cal').value;
+  if (!cal) return note(el, 'Create a calendar first', 'warn');
+  busy(el, 'Expanding slots across the term');
+  try {
+    const r = await api(`/calendars/${cal}/instruction-windows`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slots: [{
+          subject: $('win-subject').value, class_id: $('win-class').value,
+          weekday: +$('win-day').value, start_time: $('win-start').value, end_time: $('win-end').value,
+        }],
+      }),
+    });
+    note(el, `${r.windows_created} instruction windows created`);
+  } catch (e) { fail(el, e); }
+};
+
+// ---------- 8 plan ----------
+$('btn-units').onclick = async () => {
+  const el = $('out-units');
+  const objectives = NODES.filter(n => n.node_type === 'objective');
+  const targets = objectives.length ? objectives : NODES;
+  if (!targets.length) return note(el, 'Extract a curriculum first', 'warn');
+  busy(el, 'Creating teaching units');
+  try {
+    const units = await api('/ingestion/teaching-units', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        node_ids: targets.map(n => n.id),
+        default_duration_minutes: +$('tu-dur').value,
+        priorities: EMPHASIS,
+      }),
+    });
+    const all = await api('/teaching-units');
+    el.innerHTML = `<span class="badge ok">${units.length} new, ${all.length} total</span>` + table(all, [
+      { h: 'Objective', f: u => esc(u.node_label) },
+      { h: 'Minutes', f: u => u.duration_minutes },
+      { h: 'Priority', f: u => u.priority.toFixed(2) },
+    ]);
+  } catch (e) { fail(el, e); }
+};
+
+$('btn-plan').onclick = async () => {
+  const el = $('out-plan'), cal = $('plan-cal').value;
+  if (!cal) return note(el, 'Create a calendar first', 'warn');
+  busy(el, 'Solving (CP-SAT)');
+  try {
+    const units = await api('/teaching-units');
+    const plan = await api('/planning/plans', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        calendar_id: cal, subject: $('plan-subject').value, class_id: $('plan-class').value,
+        node_ids: units.map(u => u.node_id), trigger_reason: 'initial_plan',
+      }),
+    });
+    S.planVersion = plan.plan_version_id;
+    el.innerHTML = renderPlan(plan);
+    await renderSchedule(el, plan.plan_version_id);
+  } catch (e) { fail(el, e); }
+};
+
+function renderPlan(plan) {
+  const unsched = plan.unscheduled_unit_ids.length;
+  return `<div class="kpi-row">
+    <div class="kpi ok"><div class="v">${plan.assignments.length}</div><div class="l">units scheduled</div></div>
+    <div class="kpi ${unsched ? 'warn' : 'ok'}"><div class="v">${unsched}</div><div class="l">unscheduled</div></div>
+    <div class="kpi"><div class="v" style="font-size:1rem">${esc(plan.status)}</div><div class="l">solver status</div></div>
+  </div>`;
+}
+async function renderSchedule(el, planId) {
+  try {
+    const rows = await api(`/planning/plans/${planId}`);
+    el.insertAdjacentHTML('beforeend', table(rows, [
+      { h: 'Date', f: r => r.date },
+      { h: 'Lesson', f: r => esc(r.node_label) },
+      { h: 'Minutes', f: r => r.scheduled_minutes },
+      { h: 'Status', f: r => `<span class="badge">${esc(r.status)}</span>` },
+    ]));
+    fillSelect($('gen-unit'), rows, r => `${r.date} — ${r.node_label}`);
+  } catch { /* an empty plan has no detail rows; the KPIs already say so */ }
+}
+
+// ---------- 9 replan ----------
+$('btn-disrupt').onclick = async () => {
+  const el = $('out-disrupt'), cal = $('dis-cal').value, d = $('dis-date').value;
+  if (!cal || !d) return note(el, 'Pick a calendar and a date', 'warn');
+  busy(el, 'Marking day unavailable');
+  try {
+    const r = await api(`/calendars/${cal}/disrupt`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: d, reason: 'school closed' }),
+    });
+    note(el, `${r.date} marked non-teaching — ${r.windows_disrupted} window(s) withdrawn`);
+  } catch (e) { fail(el, e); }
+};
+
+$('btn-replan').onclick = async () => {
+  const el = $('out-replan'), cal = $('dis-cal').value;
+  if (!cal) return note(el, 'Pick a calendar', 'warn');
+  const previous = await currentPlanVersion();
+  if (!previous) return note(el, 'Build an initial plan in step 8 first', 'warn');
+  busy(el, 'Replanning with churn minimisation');
+  try {
+    const units = await api('/teaching-units');
+    const plan = await api('/planning/plans', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        calendar_id: cal, subject: $('plan-subject').value, class_id: $('plan-class').value,
+        node_ids: units.map(u => u.node_id),
+        trigger_reason: 'calendar_disruption', parent_version_id: previous,
+      }),
+    });
+    el.innerHTML = `<div class="kpi-row">
+        <div class="kpi ok"><div class="v">${plan.unchanged_count}</div><div class="l">lessons unchanged</div></div>
+        <div class="kpi warn"><div class="v">${plan.moved_count}</div><div class="l">lessons moved</div></div>
+        <div class="kpi ${plan.unscheduled_unit_ids.length ? 'warn' : 'ok'}"><div class="v">${plan.unscheduled_unit_ids.length}</div><div class="l">dropped</div></div>
+      </div>
+      <p class="hint" style="margin-top:.7rem">A good replan is measured by how little it disturbs &mdash;
+        that first number is the one that matters.</p>`;
+    S.planVersion = plan.plan_version_id;
+    await renderSchedule(el, plan.plan_version_id);
+  } catch (e) { fail(el, e); }
+};
+
+// ---------- 10 generation ----------
+function renderClaims(claims) {
+  if (!claims.length) return '<div class="empty">No claims survived — check that the objective has retrievable evidence spans.</div>';
+  const kinds = { verified: 'ok', partially_supported: 'warn', unsupported: 'err', not_checked: '' };
+  return table(claims, [
+    { h: 'Claim', f: c => esc(c.text) },
+    { h: 'Verification', f: c => `<span class="badge ${kinds[c.verification_status] ?? ''}">${esc(c.verification_status)}</span>` },
+    { h: 'Confidence', f: c => confBadge(c.confidence) },
+  ]);
+}
+$('btn-lesson').onclick = async () => {
+  const el = $('out-lesson'), id = $('gen-unit').value;
+  if (!id) return note(el, 'Build a plan first — lessons are generated only for scheduled units', 'warn');
+  busy(el, 'Retrieving evidence, generating, then verifying with a second model');
+  try { el.innerHTML = renderClaims(await api(`/generation/lessons/${id}`, { method: 'POST' })); }
+  catch (e) { fail(el, e); }
+};
+$('btn-assess').onclick = async () => {
+  const el = $('out-assess'), id = $('gen-node').value;
+  if (!id) return note(el, 'Extract a curriculum first', 'warn');
+  busy(el, 'Generating and verifying practice questions');
+  try {
+    el.innerHTML = renderClaims(await api(`/generation/assessments/${id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count: +$('gen-count').value }),
+    }));
+  } catch (e) { fail(el, e); }
+};
+
+/** The plan this browser built, or — for a browser that never built one —
+ * the newest plan already in the database. Without the fallback a fresh
+ * visitor sees an empty generation step even though a plan exists. */
+async function currentPlanVersion() {
+  if (S.planVersion) return S.planVersion;
+  try {
+    const plans = (await api('/planning/plans')).filter(p => p.scheduled_count > 0);
+    if (plans.length) { S.planVersion = plans[0].id; return plans[0].id; }
+  } catch { /* listing is best-effort; the step still works once a plan is built */ }
+  return null;
+}
+
+// ---------- per-step refresh ----------
+const REFRESH = {
+  upload: loadDocuments,
+  curriculum: () => { loadDocuments(); loadNodes(); },
+  questions: () => { loadDocuments(); loadQuestions(); },
+  mapping: () => { loadQuestions(); loadNodes(); loadMappings(); },
+  corrections: loadCorrectable,
+  emphasis: loadNodes,
+  calendar: loadCalendars,
+  plan: () => { loadCalendars(); loadNodes(); },
+  replan: loadCalendars,
+  generation: async () => {
+    loadNodes();
+    const plan = await currentPlanVersion();
+    // Only the gen-unit dropdown is wanted here, not another schedule
+    // table — renderSchedule fills the select as a side effect, so give it
+    // a throwaway node to append its table to.
+    if (plan) renderSchedule(document.createElement('div'), plan);
+  },
+};
+
+checkStatus();
+show(location.hash.slice(1) || 'upload');
+</script>
+</body>
+</html>

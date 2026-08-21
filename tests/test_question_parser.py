@@ -122,3 +122,95 @@ def test_unmatched_questions_and_entries_are_reported_not_dropped():
     assert len(linked) == 1
     assert linked[0].mark_scheme is None  # question kept, mismatch visible
     assert [e.number.canonical() for e in orphans] == ["q2a"]
+
+
+def test_question_heading_with_colon_is_recognized():
+    """"Question 1:" is the dominant heading form in real papers; before
+    this was supported such a paper parsed to zero questions.
+    """
+    from app.ingestion.question_ref import QuestionNumber, parse_question_marker
+
+    assert parse_question_marker("Question 1: [5+5=10 points]") == QuestionNumber(1)
+    assert parse_question_marker("Q2: Construct a B-tree") == QuestionNumber(2)
+
+
+def test_repeated_question_marker_merges_instead_of_duplicating():
+    """A repeated marker (running header, question continued after a
+    figure) must join the question already opened — two groups with the
+    same number violate the (document_id, question_ref) unique constraint
+    and abort the whole paper's ingestion.
+    """
+    import uuid
+
+    from app.ingestion.question_parser import SpanLike, parse_questions
+
+    spans = [
+        SpanLike(id=uuid.uuid4(), page=1, text="Question 4 Sort a 2D array"),
+        SpanLike(id=uuid.uuid4(), page=1, text="continued prose about the array"),
+        SpanLike(id=uuid.uuid4(), page=3, text="Question 4 (continued) show your working"),
+    ]
+    questions = parse_questions(spans)
+
+    assert len(questions) == 1
+    assert questions[0].number.canonical() == "q4"
+    assert len(questions[0].span_ids) == 3
+    assert questions[0].pages == [1, 3]
+
+
+def test_bare_numbers_are_page_furniture_when_the_paper_labels_questions():
+    """A paper that writes "Question 1:" writes it for every question, so a
+    block merely opening with a digit there is a page number or running
+    header — not question 3. Without this, a nine-page paper yields nine
+    phantom questions whose "text" is the page header.
+    """
+    import uuid
+
+    from app.ingestion.question_parser import SpanLike, parse_questions
+
+    spans = [
+        SpanLike(id=uuid.uuid4(), page=1, text="Question 1: Construct a B-tree of order 3"),
+        SpanLike(id=uuid.uuid4(), page=2, text="2 National University, Karachi, Fall 2022"),
+        SpanLike(id=uuid.uuid4(), page=3, text="Question 2: Implement a hash table"),
+    ]
+    refs = [q.number.canonical() for q in parse_questions(spans)]
+
+    assert refs == ["q1", "q2"]
+
+
+def test_bare_numbers_still_open_questions_when_no_explicit_heading_exists():
+    """The permissive form stays available for papers that genuinely number
+    questions "7 The diagram shows..." with no "Question" word at all.
+    """
+    import uuid
+
+    from app.ingestion.question_parser import SpanLike, parse_questions
+
+    spans = [
+        SpanLike(id=uuid.uuid4(), page=1, text="7 The diagram shows a binary tree"),
+        SpanLike(id=uuid.uuid4(), page=1, text="8 Define a hash collision"),
+    ]
+    refs = [q.number.canonical() for q in parse_questions(spans)]
+
+    assert refs == ["q7", "q8"]
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("Question 1: [10 points] Write code", 10),
+        # Papers routinely itemize before the total; the total is the
+        # question's allocation. Before this was handled, every such
+        # question recorded no marks and the emphasis score's marks term
+        # was uniformly zero.
+        ("Question 1: [5+5=10 points] Construct a B-tree", 10),
+        ("Question 2: [3+3+4 =10 points] Implement", 10),
+        ("answer (3 marks)", 3),
+        ("answer (1 mark)", 1),
+        ("a section total [Total: 12]", None),
+        ("no allocation stated", None),
+    ],
+)
+def test_extract_marks_handles_points_and_itemized_totals(text, expected):
+    from app.ingestion.question_parser import extract_marks
+
+    assert extract_marks(text) == expected

@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     together_api_key: str | None = None
     fireworks_api_key: str | None = None
     ollama_base_url: str = "http://localhost:11434/v1"
+    # Two distinct models so generation and verification are genuinely
+    # independent calls even when Ollama is the only working provider —
+    # see app/providers/llm/ollama_provider.py.
+    ollama_model: str = "llama3.3"
+    ollama_verify_model: str = "llama3.3"
     embedding_provider_api_key: str | None = None
     ocr_fallback_api_key: str | None = None
 

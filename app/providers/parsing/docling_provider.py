@@ -9,7 +9,8 @@ the installed docling version before trusting it in the ingestion pipeline.
 """
 
 from docling.datamodel.base_models import InputFormat
-from docling.document_converter import DocumentConverter
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling_core.types.doc import DocItemLabel
 
 from app.providers.base import (
@@ -33,10 +34,26 @@ _LABEL_MAP = {
 
 
 class DoclingParserProvider(ParserProvider):
+    """This class is for born-digital PDFs specifically (config/providers.yaml
+    routes "scanned_or_multicolumn" elsewhere) — such a PDF already has a
+    real text layer, so OCR is pure overhead: extra RapidOCR model
+    downloads and CPU time for text Docling can already read directly.
+    do_ocr=False turns that off. (do_table_structure stays on — the
+    TableFormer model is Docling's normal layout-analysis dependency, not
+    an OCR-specific extra, and disabling it would drop table structure
+    from the provenance we're required to keep.)
+    """
+
     name = "docling"
 
     def __init__(self):
-        self._converter = DocumentConverter(allowed_formats=[InputFormat.PDF])
+        pipeline_options = PdfPipelineOptions(do_ocr=False)
+        self._converter = DocumentConverter(
+            allowed_formats=[InputFormat.PDF],
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            },
+        )
 
     async def parse(self, file_path: str) -> ParsedDocument:
         try:

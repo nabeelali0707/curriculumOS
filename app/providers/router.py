@@ -100,6 +100,7 @@ class ProviderRouter(Generic[T]):
         async def _attempt() -> R:
             return await fn(self.provider)
 
+        start = time.monotonic()
         try:
             result = await _attempt()
         except ProviderError:
@@ -107,6 +108,20 @@ class ProviderRouter(Generic[T]):
             raise
         else:
             self._breaker.record_success()
+            # Cost/latency tracking per provider call, from the first
+            # integration rather than bolted on later (07_TASK_ROADMAP.md
+            # cross-cutting requirement). Token counts only exist on
+            # LLMResponse, not EmbeddingResponse/ParsedDocument — logged
+            # when present rather than plumbing a task-specific return type
+            # through this generic router.
+            elapsed_ms = (time.monotonic() - start) * 1000
+            logger.info(
+                "provider_call provider=%s elapsed_ms=%.0f input_tokens=%s output_tokens=%s",
+                provider_name,
+                elapsed_ms,
+                getattr(result, "input_tokens", None),
+                getattr(result, "output_tokens", None),
+            )
             return result
 
 

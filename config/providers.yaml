@@ -19,11 +19,13 @@
 
 llm:
   generation:
-    # Chain per 04_PROVIDER_STRATEGY.md: Anthropic -> OpenAI -> self-hosted
-    # open-weight (the spec names Together/Fireworks/Groq as alternative
-    # hosts for that tier, not a strict sub-order — groq/together/fireworks
-    # order below is a reasonable default, not a spec requirement).
-    priority: [anthropic, openai, groq, together, fireworks, openrouter, ollama]
+    # LIVE-DEMO OVERRIDE: ollama first, not last. 04_PROVIDER_STRATEGY.md's
+    # documented order is Anthropic -> OpenAI -> self-hosted; as of this
+    # run neither Anthropic/OpenAI keys are set nor do the configured
+    # Groq/OpenRouter keys actually work (invalid key / no credits — see
+    # session notes), so ollama is the only provider that's actually
+    # reachable. Revert this ordering once real cloud keys are in place.
+    priority: [ollama, anthropic, openai, groq, together, fireworks, openrouter]
     retry:
       attempts: 3
       backoff_seconds: 2
@@ -31,8 +33,14 @@ llm:
       failure_threshold: 5
       cooldown_seconds: 60
   verification:
-    # First entry must differ from generation.priority[0].
-    priority: [openai, anthropic, groq, openrouter]
+    # ollama_verify is the SAME Ollama instance as generation's "ollama"
+    # entry but a different model (see app/config.py's ollama_verify_model
+    # / app/providers/llm/ollama_provider.py) — a distinct provider name so
+    # the "verification must not start with generation's provider" check
+    # in this package's __init__.py treats it as real independent
+    # verification, not a model grading its own output. First entry must
+    # differ from generation.priority[0].
+    priority: [ollama_verify, openai, anthropic, groq, openrouter]
     retry:
       attempts: 3
       backoff_seconds: 2
@@ -43,13 +51,30 @@ llm:
 embeddings:
   # Embedding models are not interchangeable mid-request: swapping providers
   # means rebuilding the index, not per-call failover. One provider for P0.
-  primary: qwen3-embedding-8b
+  # Served locally via Ollama (`ollama pull qwen3-embedding:0.6b`), using
+  # Ollama's OpenAI-compatible /v1/embeddings route — no separate inference
+  # server to stand up for the pilot.
+  primary: qwen3-embedding:0.6b
 
 parsing:
-  # Routed by document type/confidence, not a fixed priority list.
-  born_digital_pdf: docling
-  scanned_or_multicolumn: marker
-  low_confidence_fallback: null  # unset until a managed OCR provider is wired
+  # Ordered fallback, not type-routed dispatch: a caller can't reliably tell
+  # a born-digital PDF from a scanned one before parsing it, so the chain
+  # finds out by trying. Each provider raises rather than returning an empty
+  # document, which is what lets the next one take over.
+  #
+  #   pypdf_text     PDFs with a text layer. First because it's the ONLY
+  #                  parser that reports real page numbers, and page-exact
+  #                  provenance is the product's core requirement.
+  #   anydoc         Office formats (docx/pptx/xlsx/odt/rtf/epub/csv) and
+  #                  PDFs pypdf couldn't read. Rust, no ML models, better
+  #                  structure — but emits no page boundaries.
+  #   vision_llm_ocr Scanned pages with no text layer at all. Slow and
+  #                  token-costing, so it's genuinely last.
+  #
+  # docling is available via get_docling_router() but stays out of this
+  # chain: its layout model downloads on first use, and an upload should
+  # never trigger that.
+  priority: [pypdf_text, anydoc, vision_llm_ocr]
 
 solver:
   # No live failover — a solver swap is an engineering decision, not a

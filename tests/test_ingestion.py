@@ -4,7 +4,13 @@ import pytest
 
 from app.domain.models import DocType, SourceDocument, SourceSpan
 from app.ingestion.service import IngestionService, hash_span_text
-from app.providers.base import BoundingBox, ExtractedBlock, ExtractionBlockKind, ParsedDocument
+from app.providers.base import (
+    BoundingBox,
+    ExtractedBlock,
+    ExtractionBlockKind,
+    ParsedDocument,
+    ProviderError,
+)
 
 
 class FakeSession:
@@ -98,18 +104,37 @@ async def test_ingest_document_persists_document_and_spans():
     assert first.content_hash.startswith("sha256:")
 
 
-async def test_ingest_document_rejects_unwired_parser(monkeypatch):
-    import app.ingestion.service as service_module
+async def test_ingest_document_propagates_parser_failure():
+    """A parser that can't read the file must surface as an error, not as a
+    silently-empty document — an ingested-but-blank source would look like a
+    successful upload while breaking every downstream citation.
+    """
 
-    monkeypatch.setattr(service_module, "select_parser_name", lambda: "marker")
+    class FailingRouter:
+        async def call(self, fn):
+            raise ProviderError("no parser could read this file")
 
-    session = FakeSession()
-    service = IngestionService(session, parser_router=FakeParserRouter(_sample_parsed_document()))
+    service = IngestionService(FakeSession(), parser_router=FailingRouter())
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(ProviderError):
         await service.ingest_document(
             file_path="scanned.pdf", title="Scanned Doc", doc_type=DocType.TEXTBOOK
         )
+
+
+def test_parser_chain_puts_page_attribution_first_and_ocr_last():
+    """Order is load-bearing, not cosmetic: pypdf_text is the only parser
+    that reports real page numbers (the product's provenance requirement),
+    OCR is the slow token-costing last resort, and docling must never be
+    reachable from the default chain because its layout model downloads on
+    first use. See app/providers/parsing/__init__.py.
+    """
+    from app.config import get_provider_config
+
+    priority = get_provider_config()["parsing"]["priority"]
+    assert priority[0] == "pypdf_text"
+    assert priority[-1] == "vision_llm_ocr"
+    assert "docling" not in priority
 
 
 def test_hash_span_text_is_deterministic_and_sensitive_to_content():

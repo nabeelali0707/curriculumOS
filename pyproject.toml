@@ -20,6 +20,11 @@ dependencies = [
     "openai>=1.54",
     "celery[redis]>=5.4",
     "docling>=2.0",
+    "firecrawl-anydoc>=0.2",
+    "pypdf>=5.0",
+    "pillow>=10.0",  # pypdf page.images, for the vision-LLM OCR parser
+    "python-multipart>=0.0.9",
+    "ortools>=9.11",
 ]
 
 [project.optional-dependencies]

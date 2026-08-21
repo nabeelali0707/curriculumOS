@@ -3,7 +3,7 @@ from app.providers.embeddings.qwen_provider import QwenEmbeddingProvider
 from app.providers.router import ProviderRouter
 
 _EMBEDDING_PROVIDERS = {
-    "qwen3-embedding-8b": QwenEmbeddingProvider,
+    "qwen3-embedding:0.6b": QwenEmbeddingProvider,
 }
 
 

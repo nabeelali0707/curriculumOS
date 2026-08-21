@@ -32,28 +32,41 @@ def upgrade() -> None:
     op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')  # gen_random_uuid()
     op.execute('CREATE EXTENSION IF NOT EXISTS "vector"')  # pgvector, for future embedding columns
 
-    node_type = pg.ENUM("topic", "subtopic", "objective", name="node_type")
+    # create_type=False on every enum: we create each PG type explicitly,
+    # once, in the loop below. Without this, CREATE TABLE's own DDL
+    # compiler tries to (re-)create the same named type for each column
+    # that uses it, which fails with DuplicateObjectError the moment two
+    # things reference the same enum in one transaction (untested before
+    # this migration was actually run against a live Postgres).
+    node_type = pg.ENUM("topic", "subtopic", "objective", name="node_type", create_type=False)
     origin = pg.ENUM(
-        "official", "teacher_defined", "machine_extracted", "machine_inferred", name="origin"
+        "official", "teacher_defined", "machine_extracted", "machine_inferred", name="origin",
+        create_type=False,
     )
     edge_type = pg.ENUM(
-        "prerequisite", "assessed_by", "covered_by", "part_of", name="edge_type"
+        "prerequisite", "assessed_by", "covered_by", "part_of", name="edge_type", create_type=False
     )
     doc_type = pg.ENUM(
-        "textbook", "past_paper", "mark_scheme", "syllabus", "calendar", name="doc_type"
+        "textbook", "past_paper", "mark_scheme", "syllabus", "calendar", name="doc_type",
+        create_type=False,
     )
     mapping_method = pg.ENUM(
-        "embedding", "lexical", "llm", "hybrid", "human_corrected", name="mapping_method"
+        "embedding", "lexical", "llm", "hybrid", "human_corrected", name="mapping_method",
+        create_type=False,
     )
-    day_type = pg.ENUM("school_day", "non_teaching", "exam_day", name="day_type")
+    day_type = pg.ENUM(
+        "school_day", "non_teaching", "exam_day", name="day_type", create_type=False
+    )
     scheduled_unit_status = pg.ENUM(
-        "planned", "taught", "moved", "compressed", "removed", name="scheduled_unit_status"
+        "planned", "taught", "moved", "compressed", "removed", name="scheduled_unit_status",
+        create_type=False,
     )
     mastery_status = pg.ENUM(
-        "mastered", "needs_reinforcement", "reteach", name="mastery_status"
+        "mastered", "needs_reinforcement", "reteach", name="mastery_status", create_type=False
     )
     verification_status = pg.ENUM(
-        "verified", "unsupported", "partially_supported", "not_checked", name="verification_status"
+        "verified", "unsupported", "partially_supported", "not_checked",
+        name="verification_status", create_type=False,
     )
 
     bind = op.get_bind()

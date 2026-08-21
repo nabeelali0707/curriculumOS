@@ -43,9 +43,12 @@ _NUM_DOTTED = re.compile(
     r"^\s*(?:Q(?:uestion)?[\s.]*)?(\d{1,2})\.(\d{1,2})(?=[\s.:)]|$)",
     re.IGNORECASE,
 )
-# "1" / "1." / "Question 1"
+# "1" / "1." / "Question 1" / "Question 1:"
+# The colon matters: "Question 1:" is the dominant heading form in real
+# papers, and without it every question in such a paper goes unrecognized
+# and the whole document parses to zero questions.
 _NUM_ONLY = re.compile(
-    r"^\s*(?:Q(?:uestion)?[\s.]*)?(\d{1,2})[.)]?(?=\s|$)",
+    r"^\s*(?:Q(?:uestion)?[\s.]*)?(\d{1,2})[.):]?(?=\s|$)",
     re.IGNORECASE,
 )
 # "(a)" / "(a)(ii)" — continuation, inherits the number in scope.
