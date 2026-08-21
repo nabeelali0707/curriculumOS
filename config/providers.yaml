@@ -2,15 +2,28 @@
 # variables (see .env.example). Every entry maps to a concrete class in
 # app/providers/<capability>/.
 #
-# P0 wires exactly one provider per capability, except LLM verification,
-# which MUST differ from LLM generation (04_PROVIDER_STRATEGY.md: this is
-# the product's trust mechanism, not a nicety — a verifier grading its own
-# generation is not a check). Fallback chains beyond that are deferred
-# until the single-provider path is proven, per the README ground rules.
+# LLM generation and verification are each a fallback chain (see
+# app/providers/router.py:FallbackChain): the first entry is primary, the
+# rest are tried in order if it fails. verification's chain MUST NOT put
+# generation's provider first (04_PROVIDER_STRATEGY.md: this is the
+# product's trust mechanism, not a nicety — a verifier grading its own
+# generation is not a check) — app/providers/llm/__init__.py checks this
+# at call time and also excludes whichever provider actually generated
+# the claim being verified, not just config-time priority[0].
+#
+# A provider only actually gets used if its API key is set in the
+# environment — unconfigured providers are skipped, not treated as
+# failures. ollama is listed last in both chains as a fully-local,
+# no-API-key option (mainly useful for dev / offline work), not because
+# it's the intended production last resort.
 
 llm:
   generation:
-    primary: anthropic
+    # Chain per 04_PROVIDER_STRATEGY.md: Anthropic -> OpenAI -> self-hosted
+    # open-weight (the spec names Together/Fireworks/Groq as alternative
+    # hosts for that tier, not a strict sub-order — groq/together/fireworks
+    # order below is a reasonable default, not a spec requirement).
+    priority: [anthropic, openai, groq, together, fireworks, openrouter, ollama]
     retry:
       attempts: 3
       backoff_seconds: 2
@@ -18,8 +31,8 @@ llm:
       failure_threshold: 5
       cooldown_seconds: 60
   verification:
-    # Must never equal llm.generation.primary.
-    primary: openai
+    # First entry must differ from generation.priority[0].
+    priority: [openai, anthropic, groq, openrouter]
     retry:
       attempts: 3
       backoff_seconds: 2

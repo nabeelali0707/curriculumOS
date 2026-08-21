@@ -63,14 +63,10 @@ class CircuitBreaker:
 
 
 class ProviderRouter(Generic[T]):
-    """Wraps a single active provider with retry + circuit breaker.
-
-    Not a multi-provider fallback chain yet — per the README ground rules
-    and 04_PROVIDER_STRATEGY.md, P0 wires one provider per capability and
-    only adds a fallback chain once that path is proven. This class is the
-    seam a fallback chain will slot into later (try primary via this
-    router, catch ProviderUnavailableError, try the next router) without
-    changing call sites.
+    """Wraps a single provider with retry + circuit breaker. One of these
+    sits behind each entry in a FallbackChain (below) — each provider gets
+    its own retry/circuit-breaker state so one provider's outage doesn't
+    poison the others' breakers.
     """
 
     def __init__(
@@ -111,3 +107,50 @@ class ProviderRouter(Generic[T]):
         else:
             self._breaker.record_success()
             return result
+
+
+class FallbackChain(Generic[T]):
+    """Tries providers in priority order, moving to the next one when a
+    provider's retries are exhausted or its circuit is open.
+
+    Per 04_PROVIDER_STRATEGY.md ("Generation: Anthropic Claude -> OpenAI
+    GPT -> self-hosted open-weight") — the ordering in
+    config/providers.yaml's `priority` list is the fallback order, not a
+    load-balancing set. `exclude` lets a caller rule out specific
+    providers for one call without touching config — e.g. verification
+    must not silently fall through to the same provider that did the
+    generation for the claim being checked.
+    """
+
+    def __init__(self, routers: list[tuple[str, ProviderRouter[T]]]):
+        if not routers:
+            raise ValueError("FallbackChain needs at least one provider")
+        self._routers = routers
+
+    @property
+    def provider_names(self) -> list[str]:
+        """Names in priority order, limited to what's actually configured."""
+        return [name for name, _ in self._routers]
+
+    async def call(
+        self, fn: Callable[[T], Awaitable[T]], *, exclude: set[str] | None = None
+    ) -> T:
+        exclude = exclude or set()
+        last_exc: ProviderError | None = None
+        attempted = 0
+        for name, router in self._routers:
+            if name in exclude:
+                continue
+            attempted += 1
+            try:
+                return await router.call(fn)
+            except ProviderError as exc:
+                logger.warning("provider %s failed, trying next in chain: %s", name, exc)
+                last_exc = exc
+                continue
+
+        if attempted == 0:
+            raise ProviderUnavailableError(
+                f"all providers excluded from chain: {sorted(exclude)}"
+            )
+        raise ProviderUnavailableError("all providers in fallback chain exhausted") from last_exc
